@@ -1,0 +1,192 @@
+@page "/customers/{Id}"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(_isNew ? "新增客戶" : "編輯客戶") - MicroBoss</PageTitle>
+
+<h4>@(_isNew ? "新增客戶" : "編輯客戶")</h4>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <div class="alert alert-success">@_successMessage</div>
+}
+
+<div class="card">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">客戶編號 <span class="text-danger">*</span></label>
+                <input class="form-control" @bind="_dto.CustomerId" readonly="@(!_isNew)" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">客戶名稱</label>
+                <input class="form-control" @bind="_dto.CustomerName" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">簡稱</label>
+                <input class="form-control" @bind="_dto.ShortName" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">客戶類型</label>
+                <input class="form-control" @bind="_dto.CustomerType" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">統一編號</label>
+                <input class="form-control" @bind="_dto.UnitNo" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">稅別</label>
+                <input class="form-control" @bind="_dto.TaxType" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">發票抬頭</label>
+                <input class="form-control" @bind="_dto.InvoiceTitle" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">電話</label>
+                <input class="form-control" @bind="_dto.Tel1" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">傳真</label>
+                <input class="form-control" @bind="_dto.Fax" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">手機</label>
+                <input class="form-control" @bind="_dto.MobileNo" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Email</label>
+                <input class="form-control" @bind="_dto.Email" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">聯絡窗口</label>
+                <input class="form-control" @bind="_dto.ContactWindow" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">送貨地址</label>
+                <input class="form-control" @bind="_dto.DeliveryAddress" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">郵遞區號</label>
+                <input class="form-control" @bind="_dto.DeliveryAddressZip" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">付款方式</label>
+                <input class="form-control" @bind="_dto.PaymentMethod" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">送貨方式</label>
+                <input class="form-control" @bind="_dto.DeliveryMethod" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">備註</label>
+                <textarea class="form-control" rows="3" @bind="_dto.Note"></textarea>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+            @(_saving ? "儲存中..." : "儲存")
+        </button>
+        <button class="btn btn-secondary" @onclick="GoBack">返回</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    [Inject] private ICustomerService CustomerService { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private CreateCustomerDto _dto = new();
+    private bool _isNew;
+    private bool _saving;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isNew = string.Equals(Id, "new", StringComparison.OrdinalIgnoreCase);
+
+        if (!_isNew)
+        {
+            var existing = await CustomerService.GetByIdAsync(Id);
+            if (existing == null)
+            {
+                _errorMessage = "找不到此客戶";
+                return;
+            }
+
+            _dto = new CreateCustomerDto
+            {
+                CustomerId = existing.CustomerId,
+                CustomerName = existing.CustomerName,
+                ShortName = existing.ShortName,
+                CustomerType = existing.CustomerType,
+                UnitNo = existing.UnitNo,
+                TaxType = existing.TaxType,
+                InvoiceTitle = existing.InvoiceTitle,
+                Tel1 = existing.Tel1,
+                Fax = existing.Fax,
+                MobileNo = existing.MobileNo,
+                Email = existing.Email,
+                ContactWindow = existing.ContactWindow,
+                DeliveryAddress = existing.DeliveryAddress,
+                DeliveryAddressZip = existing.DeliveryAddressZip,
+                PaymentMethod = existing.PaymentMethod,
+                DeliveryMethod = existing.DeliveryMethod,
+                Note = existing.Note
+            };
+        }
+    }
+
+    private async Task Save()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+
+        if (string.IsNullOrWhiteSpace(_dto.CustomerId))
+        {
+            _errorMessage = "客戶編號為必填";
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            if (_isNew)
+            {
+                await CustomerService.CreateAsync(_dto);
+                _successMessage = "新增成功";
+                Nav.NavigateTo($"/customers/{_dto.CustomerId}");
+            }
+            else
+            {
+                await CustomerService.UpdateAsync(Id, _dto);
+                _successMessage = "儲存成功";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void GoBack() => Nav.NavigateTo("/customers");
+}

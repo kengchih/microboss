@@ -45,6 +45,7 @@ public class CreateSupplierDto
     public string? Fax { get; set; }
     public string? Email { get; set; }
     public string? ContactWindow { get; set; }
+    public string? RegisterAddress { get; set; }
     public string? Note { get; set; }
 }
 

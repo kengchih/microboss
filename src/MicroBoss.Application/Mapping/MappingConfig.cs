@@ -14,10 +14,19 @@ public class MappingConfig : IRegister
 
         config.NewConfig<Supplier, SupplierDto>();
         config.NewConfig<SupplierBank, SupplierBankDto>();
+        config.NewConfig<CreateSupplierDto, Supplier>()
+            .Ignore(dest => dest.SupplierId)
+            .Ignore(dest => dest.CreateTime)
+            .Ignore(dest => dest.LastUpdateTime)
+            .Ignore(dest => dest.Banks);
 
         config.NewConfig<Product, ProductDto>()
             .Map(dest => dest.CostData, src => src.ProductCost)
             .Map(dest => dest.StocksData, src => src.ProductStocks);
+        config.NewConfig<CreateProductDto, Product>()
+            .Ignore(dest => dest.ProductCost)
+            .Ignore(dest => dest.ProductStocks)
+            .Ignore(dest => dest.OrderDetails);
         config.NewConfig<ProductCost, ProductCostDto>();
         config.NewConfig<ProductStock, ProductStockDto>();
 

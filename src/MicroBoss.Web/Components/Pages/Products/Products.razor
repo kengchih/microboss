@@ -1,0 +1,136 @@
+@page "/products"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@using MicroBoss.Domain.Enums
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>產品管理 - MicroBoss</PageTitle>
+
+<h4>產品管理</h4>
+
+<div class="row mb-3 g-2 align-items-end">
+    <div class="col-auto">
+        <input class="form-control" placeholder="搜尋關鍵字..." @bind="_keyword" @bind:event="oninput" @onkeyup="HandleKeyUp" />
+    </div>
+    <div class="col-auto">
+        <select class="form-select" @bind="_productClass">
+            <option value="">全部類別</option>
+            <option value="0">存貨 (Stock)</option>
+            <option value="1">非存貨 (Non-Stock)</option>
+            <option value="2">服務 (Service)</option>
+            <option value="3">工時 (Labor)</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary btn-sm" @onclick="Search">搜尋</button>
+    </div>
+    <div class="col-auto ms-auto">
+        <button class="btn btn-success btn-sm" @onclick="NewProduct">新增產品</button>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <p>載入中...</p>
+}
+else if (_result == null)
+{
+    <p>無資料</p>
+}
+else
+{
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>產品編號</th>
+                <th>產品名稱</th>
+                <th>製造商</th>
+                <th>單位</th>
+                <th>停用</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in _result.Items)
+            {
+                <tr>
+                    <td>@p.ProductNo</td>
+                    <td>@p.ProductName</td>
+                    <td>@p.Manufacturer</td>
+                    <td>@p.BaseUnit</td>
+                    <td>@(p.IsSuspend == true ? "是" : "否")</td>
+                    <td>
+                        <button class="btn btn-outline-primary btn-sm" @onclick="() => EditProduct(p.ProductId)">編輯</button>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteProduct(p.ProductId)">刪除</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">共 @_result.TotalCount 筆，第 @_result.Page / @_result.TotalPages 頁</span>
+        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page <= 1)" @onclick="PrevPage">上一頁</button>
+        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page >= _result.TotalPages)" @onclick="NextPage">下一頁</button>
+    </div>
+}
+
+@code {
+    [Inject] private IProductService ProductService { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private MicroBoss.Application.Common.PagedResult<ProductDto>? _result;
+    private bool _loading = true;
+    private string _keyword = "";
+    private string _productClass = "";
+    private int _page = 1;
+    private const int PageSize = 20;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        ProductClass? pc = int.TryParse(_productClass, out var pcVal) ? (ProductClass)pcVal : null;
+        _result = await ProductService.QueryAsync(new ProductQueryDto
+        {
+            Keyword = _keyword,
+            ProductClass = pc,
+            Page = _page,
+            PageSize = PageSize
+        });
+        _loading = false;
+    }
+
+    private async Task Search()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Search();
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1) { _page--; await LoadAsync(); }
+    }
+
+    private async Task NextPage()
+    {
+        if (_result != null && _page < _result.TotalPages) { _page++; await LoadAsync(); }
+    }
+
+    private void NewProduct() => Nav.NavigateTo("/products/new");
+
+    private void EditProduct(string id) => Nav.NavigateTo($"/products/{id}");
+
+    private async Task DeleteProduct(string id)
+    {
+        await ProductService.DeleteAsync(id);
+        await LoadAsync();
+    }
+}

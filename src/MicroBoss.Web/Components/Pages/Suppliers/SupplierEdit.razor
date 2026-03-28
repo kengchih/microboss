@@ -1,0 +1,153 @@
+@page "/suppliers/new"
+@page "/suppliers/{Id}"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(_isNew ? "新增供應商" : "編輯供應商") - MicroBoss</PageTitle>
+
+<h4>@(_isNew ? "新增供應商" : $"編輯供應商 - {_dto.SupplierShortName}")</h4>
+
+@if (_loading)
+{
+    <p>載入中...</p>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">供應商簡稱</label>
+                            <input class="form-control" @bind="_dto.SupplierShortName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">供應商全名</label>
+                            <input class="form-control" @bind="_dto.SupplierFullName" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">抬頭</label>
+                            <input class="form-control" @bind="_dto.UniteTitle" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">供應商類型</label>
+                            <input class="form-control" @bind="_dto.SupplierType" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">稅別</label>
+                            <input class="form-control" @bind="_dto.TaxType" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">電話</label>
+                            <input class="form-control" @bind="_dto.Tel1" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">傳真</label>
+                            <input class="form-control" @bind="_dto.Fax" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Email</label>
+                            <input class="form-control" @bind="_dto.Email" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">聯絡窗口</label>
+                            <input class="form-control" @bind="_dto.ContactWindow" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">登記地址</label>
+                        <input class="form-control" @bind="_dto.RegisterAddress" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">備註</label>
+                        <textarea class="form-control" rows="3" @bind="_dto.Note"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary" @onclick="Save">儲存</button>
+        <button class="btn btn-secondary" @onclick="GoBack">返回</button>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Inject] private ISupplierService SupplierService { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private CreateSupplierDto _dto = new();
+    private bool _isNew;
+    private bool _loading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isNew = string.IsNullOrEmpty(Id) || Id == "new";
+
+        if (!_isNew)
+        {
+            var existing = await SupplierService.GetByIdAsync(Id!);
+            if (existing == null)
+            {
+                Nav.NavigateTo("/suppliers");
+                return;
+            }
+            _dto = new CreateSupplierDto
+            {
+                SupplierShortName = existing.SupplierShortName,
+                SupplierFullName = existing.SupplierFullName,
+                UniteTitle = existing.UniteTitle,
+                SupplierType = existing.SupplierType,
+                TaxType = existing.TaxType,
+                Tel1 = existing.Tel1,
+                Fax = existing.Fax,
+                Email = existing.Email,
+                ContactWindow = existing.ContactWindow,
+                RegisterAddress = existing.RegisterAddress,
+                Note = existing.Note
+            };
+        }
+
+        _loading = false;
+    }
+
+    private async Task Save()
+    {
+        _errorMessage = null;
+        try
+        {
+            if (_isNew)
+            {
+                var result = await SupplierService.CreateAsync(_dto);
+                Nav.NavigateTo($"/suppliers/{result.SupplierId}");
+            }
+            else
+            {
+                await SupplierService.UpdateAsync(Id!, _dto);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private void GoBack() => Nav.NavigateTo("/suppliers");
+}

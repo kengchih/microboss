@@ -1,0 +1,217 @@
+@page "/products/{Id}"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@using MicroBoss.Domain.Enums
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(_isNew ? "新增產品" : "編輯產品") - MicroBoss</PageTitle>
+
+<h4>@(_isNew ? "新增產品" : "編輯產品")</h4>
+
+@if (_loading)
+{
+    <p>載入中...</p>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">基本資料</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">產品代碼</label>
+                        <input class="form-control" @bind="_dto.ProductId" readonly="@(!_isNew)" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">產品編號</label>
+                        <input class="form-control" @bind="_dto.ProductNo" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">產品類別</label>
+                        <select class="form-select" @bind="_productClassStr">
+                            <option value="">請選擇</option>
+                            <option value="0">存貨 (Stock)</option>
+                            <option value="1">非存貨 (Non-Stock)</option>
+                            <option value="2">服務 (Service)</option>
+                            <option value="3">工時 (Labor)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">主分類</label>
+                        <input class="form-control" @bind="_dto.MainCategory" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">子分類</label>
+                        <input class="form-control" @bind="_dto.SubCategory" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">產品名稱</label>
+                        <input class="form-control" @bind="_dto.ProductName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">產品名稱 (副)</label>
+                        <input class="form-control" @bind="_dto.ProductNameExt" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">基本單位</label>
+                        <input class="form-control" @bind="_dto.BaseUnit" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">條碼</label>
+                        <input class="form-control" @bind="_dto.BaseBarcode" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">製造商</label>
+                        <input class="form-control" @bind="_dto.Manufacturer" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">預設庫位</label>
+                        <input class="form-control" @bind="_dto.DefaultStockNo" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (!_isNew && _product != null)
+        {
+            <div class="col-md-6">
+                @if (_product.CostData != null)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">成本資訊 (唯讀)</div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-5">幣別</dt>
+                                <dd class="col-7">@_product.CostData.Currency</dd>
+                                <dt class="col-5">市場價格</dt>
+                                <dd class="col-7">@_product.CostData.MarketPrice?.ToString("N2")</dd>
+                                <dt class="col-5">售價 A</dt>
+                                <dd class="col-7">@_product.CostData.UnitPriceA?.ToString("N2")</dd>
+                                <dt class="col-5">售價 B</dt>
+                                <dd class="col-7">@_product.CostData.UnitPriceB?.ToString("N2")</dd>
+                                <dt class="col-5">售價 C</dt>
+                                <dd class="col-7">@_product.CostData.UnitPriceC?.ToString("N2")</dd>
+                                <dt class="col-5">成本</dt>
+                                <dd class="col-7">@_product.CostData.UnitCost?.ToString("N2")</dd>
+                                <dt class="col-5">最後進貨價</dt>
+                                <dd class="col-7">@_product.CostData.LastInStockPrice?.ToString("N2")</dd>
+                                <dt class="col-5">最後進貨日</dt>
+                                <dd class="col-7">@_product.CostData.LastInStockDate?.ToString("yyyy/MM/dd")</dd>
+                                <dt class="col-5">優先供應商</dt>
+                                <dd class="col-7">@_product.CostData.PriorityFirstSupplier</dd>
+                            </dl>
+                        </div>
+                    </div>
+                }
+
+                @if (_product.StocksData.Count > 0)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">庫存資訊 (唯讀)</div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>庫位</th>
+                                        <th>數量</th>
+                                        <th>安全量</th>
+                                        <th>儲位</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in _product.StocksData)
+                                    {
+                                        <tr>
+                                            <td>@s.StockNo</td>
+                                            <td>@s.StockQty</td>
+                                            <td>@s.SafeQty</td>
+                                            <td>@s.Location</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="mt-2">
+        <button class="btn btn-primary me-2" @onclick="Save">儲存</button>
+        <button class="btn btn-secondary" @onclick="Back">返回</button>
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    [Inject] private IProductService ProductService { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private bool _isNew;
+    private bool _loading = true;
+    private string _errorMessage = "";
+    private ProductDto? _product;
+    private CreateProductDto _dto = new();
+    private string _productClassStr = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isNew = Id == "new";
+        if (!_isNew)
+        {
+            _product = await ProductService.GetByIdAsync(Id);
+            if (_product != null)
+            {
+                _dto = new CreateProductDto
+                {
+                    ProductId = _product.ProductId,
+                    ProductNo = _product.ProductNo,
+                    ProductClass = _product.ProductClass,
+                    MainCategory = _product.MainCategory,
+                    SubCategory = _product.SubCategory,
+                    ProductName = _product.ProductName,
+                    ProductNameExt = _product.ProductNameExt,
+                    BaseUnit = _product.BaseUnit,
+                    BaseBarcode = _product.BaseBarcode,
+                    Manufacturer = _product.Manufacturer
+                };
+                _productClassStr = _product.ProductClass.HasValue
+                    ? ((int)_product.ProductClass.Value).ToString()
+                    : "";
+            }
+        }
+        _loading = false;
+    }
+
+    private async Task Save()
+    {
+        _errorMessage = "";
+        try
+        {
+            _dto.ProductClass = int.TryParse(_productClassStr, out var pcVal)
+                ? (ProductClass)pcVal
+                : null;
+
+            if (_isNew)
+                await ProductService.CreateAsync(_dto);
+            else
+                await ProductService.UpdateAsync(Id, _dto);
+
+            Nav.NavigateTo("/products");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private void Back() => Nav.NavigateTo("/products");
+}
