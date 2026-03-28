@@ -1,6 +1,8 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">MicroBoss.Web</a>
+        <a class="navbar-brand" href="">MicroBoss</a>
     </div>
 </div>
 
@@ -10,21 +12,78 @@
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> 首頁
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            <NavLink class="nav-link" href="orders">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> 訂單管理
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            <NavLink class="nav-link" href="purchases">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> 採購管理
             </NavLink>
         </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="products">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> 產品管理
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="customers">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> 客戶管理
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="suppliers">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> 供應商
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="ar">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> 應收帳款
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="inventory">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> 庫存管理
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="pos">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> POS
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="maintenance">
+                <span class="bi bi-nav-menu" aria-hidden="true"></span> 維修紀錄
+            </NavLink>
+        </div>
+
+        <AuthorizeView Roles="Admin">
+            <div class="nav-item px-3" style="padding-top:0.5rem;">
+                <hr style="border-color:rgba(255,255,255,0.2);margin:0.5rem 0;" />
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/users">
+                    <span class="bi bi-nav-menu" aria-hidden="true"></span> 使用者管理
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/comcodes">
+                    <span class="bi bi-nav-menu" aria-hidden="true"></span> 輔助代碼
+                </NavLink>
+            </div>
+        </AuthorizeView>
     </nav>
 </div>
-

@@ -1,0 +1,93 @@
+@page "/login"
+@using Microsoft.AspNetCore.Identity
+@using MicroBoss.Domain.Entities
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+
+<PageTitle>登入 - MicroBoss</PageTitle>
+
+<div style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f0f2f5;">
+    <div style="width:380px;padding:2.5rem;background:white;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+        <div style="text-align:center;margin-bottom:2rem;">
+            <h3 style="margin-bottom:0.25rem;font-weight:700;color:#1a1a2e;">MicroBoss</h3>
+            <p style="color:#666;margin:0;font-size:0.95rem;">企業管理系統</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">@_errorMessage</div>
+        }
+
+        <EditForm Model="_loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">帳號</label>
+                <InputText @bind-Value="_loginModel.Username" class="form-control" autocomplete="username" />
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold">密碼</label>
+                <InputText @bind-Value="_loginModel.Password" type="password" class="form-control" autocomplete="current-password" />
+            </div>
+            <button type="submit" class="btn btn-primary w-100" style="padding:0.6rem;">登入</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private LoginModel _loginModel { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        _loginModel ??= new LoginModel();
+    }
+
+    private string? _errorMessage;
+
+    [Inject] private SignInManager<ApplicationUser> SignInManager { get; set; } = default!;
+    [Inject] private UserManager<ApplicationUser> UserManager { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // If already authenticated, redirect to home
+        if (HttpContext?.User?.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        var user = await UserManager.FindByNameAsync(_loginModel.Username ?? "");
+        if (user == null || !user.IsEnabled)
+        {
+            _errorMessage = "帳號或密碼不正確";
+            return;
+        }
+
+        var result = await SignInManager.PasswordSignInAsync(
+            user,
+            _loginModel.Password ?? "",
+            isPersistent: false,
+            lockoutOnFailure: false);
+
+        if (result.Succeeded)
+        {
+            user.LastLoginTime = DateTime.Now;
+            await UserManager.UpdateAsync(user);
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        else
+        {
+            _errorMessage = "帳號或密碼不正確";
+        }
+    }
+
+    private sealed class LoginModel
+    {
+        public string? Username { get; set; }
+        public string? Password { get; set; }
+    }
+}

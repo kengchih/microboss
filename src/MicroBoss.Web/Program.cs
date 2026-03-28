@@ -17,6 +17,7 @@ try
     builder.Services.AddRazorComponents()
         .AddInteractiveServerComponents();
     builder.Services.AddControllers();
+    builder.Services.AddCascadingAuthenticationState();
     builder.Services
         .AddApplication()
         .AddInfrastructure(builder.Configuration);
