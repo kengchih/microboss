@@ -13,18 +13,18 @@
 <div class="row mb-3 g-2 align-items-end">
     <div class="col-md-2">
         <label class="form-label mb-1">年度</label>
-        <input type="number" class="form-control" placeholder="年度 (e.g. 2025)" @bind="_year" />
+        <DxSpinEdit @bind-Value="@_year" NullText="年度" MinValue="2000" MaxValue="2099" />
     </div>
     <div class="col-md-2">
         <label class="form-label mb-1">月份</label>
-        <input type="number" class="form-control" placeholder="月份 (1-12)" @bind="_month" min="1" max="12" />
+        <DxSpinEdit @bind-Value="@_month" NullText="月份" MinValue="1" MaxValue="12" />
     </div>
     <div class="col-md-2">
         <label class="form-label mb-1">客戶編號</label>
-        <input class="form-control" placeholder="客戶編號" @bind="_customerId" />
+        <DxTextBox @bind-Text="@_customerId" NullText="客戶編號" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
     </div>
     <div class="col-md-6 text-end">
-        <button class="btn btn-outline-secondary me-2" @onclick="Search">搜尋</button>
+        <DxButton Text="搜尋" RenderStyle="ButtonRenderStyle.Secondary" Click="@Search" />
     </div>
 </div>
 
@@ -34,60 +34,38 @@
 }
 else
 {
-    <table class="table table-striped table-sm">
-        <thead>
-            <tr>
-                <th>應收單號</th>
-                <th>結帳日期</th>
-                <th>客戶編號</th>
-                <th>收款日期</th>
-                <th>收款類型</th>
-                <th class="text-end">收款金額</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in _postingRows)
-            {
-                <tr>
-                    <td>
-                        <a href="/ar/@row.ArId" class="text-decoration-none">@row.ArNumber</a>
-                    </td>
-                    <td>@row.SettleDate.ToString("yyyy/MM/dd")</td>
-                    <td>@row.CustomerId</td>
-                    <td>@row.PostingDate.ToString("yyyy/MM/dd")</td>
-                    <td>@GetPostingTypeText(row.PostingType)</td>
-                    <td class="text-end">@row.Amount.ToString("N2")</td>
-                </tr>
-            }
-            @if (_postingRows.Count == 0)
-            {
-                <tr>
-                    <td colspan="6" class="text-center text-muted">無資料</td>
-                </tr>
-            }
-        </tbody>
-        @if (_postingRows.Count > 0)
-        {
-            <tfoot class="table-light fw-bold">
-                <tr>
-                    <td colspan="5" class="text-end">合計</td>
-                    <td class="text-end">@_postingRows.Sum(r => r.Amount).ToString("N2")</td>
-                </tr>
-            </tfoot>
-        }
-    </table>
+    <DxGrid Data="@_postingRows" ShowFilterRow="true" PageSize="@_pageSize">
+        <Columns>
+            <DxGridDataColumn FieldName="@nameof(PostingRow.ArNumber)" Caption="應收單號">
+                <CellDisplayTemplate>
+                    @{ var row = (PostingRow)context.DataItem; }
+                    <a href="/ar/@row.ArId" class="text-decoration-none">@row.ArNumber</a>
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="@nameof(PostingRow.SettleDate)" Caption="結帳日期" DisplayFormat="yyyy/MM/dd" />
+            <DxGridDataColumn FieldName="@nameof(PostingRow.CustomerId)" Caption="客戶編號" />
+            <DxGridDataColumn FieldName="@nameof(PostingRow.PostingDate)" Caption="收款日期" DisplayFormat="yyyy/MM/dd" />
+            <DxGridDataColumn FieldName="@nameof(PostingRow.PostingType)" Caption="收款類型">
+                <CellDisplayTemplate>
+                    @GetPostingTypeText(((PostingRow)context.DataItem).PostingType)
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="@nameof(PostingRow.Amount)" Caption="收款金額" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" />
+        </Columns>
+        <TotalSummary>
+            <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="@nameof(PostingRow.Amount)" ValueDisplayFormat="N2" FooterColumnName="@nameof(PostingRow.Amount)" />
+        </TotalSummary>
+    </DxGrid>
 
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3 mt-2">
         <span>共 @_result.TotalCount 筆應收帳款，收款記錄 @_postingRows.Count 筆</span>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page <= 1)"
-                @onclick="PreviousPage">上一頁</button>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page >= _result.TotalPages)"
-                @onclick="NextPage">下一頁</button>
-        <select class="form-select form-select-sm w-auto" @bind="_pageSize" @bind:after="Search">
-            <option value="10">10 筆/頁</option>
-            <option value="20">20 筆/頁</option>
-            <option value="50">50 筆/頁</option>
-        </select>
+        <DxButton Text="上一頁" RenderStyle="ButtonRenderStyle.Secondary"
+                  Enabled="@(_result.Page > 1)" Click="@PreviousPage" />
+        <DxButton Text="下一頁" RenderStyle="ButtonRenderStyle.Secondary"
+                  Enabled="@(_result.Page < _result.TotalPages)" Click="@NextPage" />
+        <DxComboBox T="int" Data="@_pageSizeOptions"
+                    Value="@_pageSize"
+                    ValueChanged="@(async (int v) => await OnPageSizeChanged(v))" />
     </div>
 }
 
@@ -102,6 +80,8 @@ else
     private string? _customerId;
     private int _page = 1;
     private int _pageSize = 20;
+
+    private static readonly List<int> _pageSizeOptions = [10, 20, 50];
 
     protected override async Task OnInitializedAsync()
     {
@@ -156,6 +136,13 @@ else
             _page++;
             await LoadData();
         }
+    }
+
+    private async Task OnPageSizeChanged(int value)
+    {
+        _pageSize = value;
+        _page = 1;
+        await LoadData();
     }
 
     private static string GetPostingTypeText(AccountsReceivablePostingType type) => type switch

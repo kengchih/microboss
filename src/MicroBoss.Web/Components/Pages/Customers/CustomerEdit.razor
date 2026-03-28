@@ -20,81 +20,64 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label">客戶編號 <span class="text-danger">*</span></label>
-                <input class="form-control" @bind="_dto.CustomerId" readonly="@(!_isNew)" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">客戶名稱</label>
-                <input class="form-control" @bind="_dto.CustomerName" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">簡稱</label>
-                <input class="form-control" @bind="_dto.ShortName" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">客戶類型</label>
-                <input class="form-control" @bind="_dto.CustomerType" />
-            </div>
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="客戶編號 *" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.CustomerId" ReadOnly="@(!_isNew)" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="客戶名稱" ColSpanMd="4">
+                <DxTextBox @bind-Text="@_dto.CustomerName" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="簡稱" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.ShortName" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="客戶類型" ColSpanMd="2">
+                <DxTextBox @bind-Text="@_dto.CustomerType" />
+            </DxFormLayoutItem>
 
-            <div class="col-md-3">
-                <label class="form-label">統一編號</label>
-                <input class="form-control" @bind="_dto.UnitNo" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">稅別</label>
-                <input class="form-control" @bind="_dto.TaxType" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">發票抬頭</label>
-                <input class="form-control" @bind="_dto.InvoiceTitle" />
-            </div>
+            <DxFormLayoutItem Caption="統一編號" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.UnitNo" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="稅別" ColSpanMd="2">
+                <DxTextBox @bind-Text="@_dto.TaxType" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="發票抬頭" ColSpanMd="4">
+                <DxTextBox @bind-Text="@_dto.InvoiceTitle" />
+            </DxFormLayoutItem>
 
-            <div class="col-md-3">
-                <label class="form-label">電話</label>
-                <input class="form-control" @bind="_dto.Tel1" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">傳真</label>
-                <input class="form-control" @bind="_dto.Fax" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">手機</label>
-                <input class="form-control" @bind="_dto.MobileNo" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Email</label>
-                <input class="form-control" @bind="_dto.Email" />
-            </div>
+            <DxFormLayoutItem Caption="電話" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.Tel1" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="傳真" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.Fax" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="手機" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.MobileNo" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Email" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.Email" />
+            </DxFormLayoutItem>
 
-            <div class="col-md-3">
-                <label class="form-label">聯絡窗口</label>
-                <input class="form-control" @bind="_dto.ContactWindow" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">送貨地址</label>
-                <input class="form-control" @bind="_dto.DeliveryAddress" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">郵遞區號</label>
-                <input class="form-control" @bind="_dto.DeliveryAddressZip" />
-            </div>
+            <DxFormLayoutItem Caption="聯絡窗口" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.ContactWindow" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="送貨地址" ColSpanMd="4">
+                <DxTextBox @bind-Text="@_dto.DeliveryAddress" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="郵遞區號" ColSpanMd="2">
+                <DxTextBox @bind-Text="@_dto.DeliveryAddressZip" />
+            </DxFormLayoutItem>
 
-            <div class="col-md-3">
-                <label class="form-label">付款方式</label>
-                <input class="form-control" @bind="_dto.PaymentMethod" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">送貨方式</label>
-                <input class="form-control" @bind="_dto.DeliveryMethod" />
-            </div>
+            <DxFormLayoutItem Caption="付款方式" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.PaymentMethod" />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="送貨方式" ColSpanMd="3">
+                <DxTextBox @bind-Text="@_dto.DeliveryMethod" />
+            </DxFormLayoutItem>
 
-            <div class="col-12">
-                <label class="form-label">備註</label>
-                <textarea class="form-control" rows="3" @bind="_dto.Note"></textarea>
-            </div>
-        </div>
+            <DxFormLayoutItem Caption="備註" ColSpanMd="12">
+                <DxMemo @bind-Text="@_dto.Note" Rows="3" />
+            </DxFormLayoutItem>
+        </DxFormLayout>
     </div>
     <div class="card-footer d-flex gap-2">
         <button class="btn btn-primary" @onclick="Save" disabled="@_saving">

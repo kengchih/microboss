@@ -11,16 +11,13 @@
 
 <div class="row mb-3 g-2 align-items-end">
     <div class="col-auto">
-        <input class="form-control" placeholder="搜尋關鍵字..." @bind="_keyword" @bind:event="oninput" @onkeyup="HandleKeyUp" />
-    </div>
-    <div class="col-auto">
-        <select class="form-select" @bind="_productClass">
-            <option value="">全部類別</option>
-            <option value="0">存貨 (Stock)</option>
-            <option value="1">非存貨 (Non-Stock)</option>
-            <option value="2">服務 (Service)</option>
-            <option value="3">工時 (Labor)</option>
-        </select>
+        <label class="form-label mb-1">產品類別</label>
+        <DxComboBox Data="@_productClassOptions"
+                    TextFieldName="Label"
+                    ValueFieldName="Value"
+                    @bind-Value="@_productClass"
+                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                    NullText="全部類別" />
     </div>
     <div class="col-auto">
         <button class="btn btn-primary btn-sm" @onclick="Search">搜尋</button>
@@ -34,58 +31,57 @@
 {
     <p>載入中...</p>
 }
-else if (_result == null)
+else if (_items == null)
 {
     <p>無資料</p>
 }
 else
 {
-    <table class="table table-striped table-sm">
-        <thead>
-            <tr>
-                <th>產品編號</th>
-                <th>產品名稱</th>
-                <th>製造商</th>
-                <th>單位</th>
-                <th>停用</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var p in _result.Items)
-            {
-                <tr>
-                    <td>@p.ProductNo</td>
-                    <td>@p.ProductName</td>
-                    <td>@p.Manufacturer</td>
-                    <td>@p.BaseUnit</td>
-                    <td>@(p.IsSuspend == true ? "是" : "否")</td>
-                    <td>
-                        <button class="btn btn-outline-primary btn-sm" @onclick="() => EditProduct(p.ProductId)">編輯</button>
-                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteProduct(p.ProductId)">刪除</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    <div class="d-flex align-items-center gap-2">
-        <span class="text-muted small">共 @_result.TotalCount 筆，第 @_result.Page / @_result.TotalPages 頁</span>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page <= 1)" @onclick="PrevPage">上一頁</button>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page >= _result.TotalPages)" @onclick="NextPage">下一頁</button>
-    </div>
+    <DxGrid Data="@_items"
+            ShowFilterRow="true"
+            PageSize="20"
+            PagerVisible="true">
+        <Columns>
+            <DxGridDataColumn FieldName="ProductNo" Caption="產品編號" />
+            <DxGridDataColumn FieldName="ProductName" Caption="產品名稱" />
+            <DxGridDataColumn FieldName="Manufacturer" Caption="製造商" />
+            <DxGridDataColumn FieldName="BaseUnit" Caption="單位" />
+            <DxGridDataColumn FieldName="IsSuspend" Caption="停用">
+                <CellDisplayTemplate>
+                    @{
+                        var product = (ProductDto)context.DataItem;
+                    }
+                    @(product.IsSuspend == true ? "是" : "否")
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridCommandColumn Width="150px">
+                <CellDisplayTemplate>
+                    @{
+                        var product = (ProductDto)context.DataItem;
+                    }
+                    <button class="btn btn-outline-primary btn-sm" @onclick="() => EditProduct(product.ProductId)">編輯</button>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteProduct(product.ProductId)">刪除</button>
+                </CellDisplayTemplate>
+            </DxGridCommandColumn>
+        </Columns>
+    </DxGrid>
 }
 
 @code {
     [Inject] private IProductService ProductService { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
 
-    private MicroBoss.Application.Common.PagedResult<ProductDto>? _result;
+    private List<ProductDto>? _items;
     private bool _loading = true;
-    private string _keyword = "";
-    private string _productClass = "";
-    private int _page = 1;
-    private const int PageSize = 20;
+    private string? _productClass;
+
+    private readonly List<(string Label, string Value)> _productClassOptions = new()
+    {
+        ("存貨 (Stock)", "0"),
+        ("非存貨 (Non-Stock)", "1"),
+        ("服務 (Service)", "2"),
+        ("工時 (Labor)", "3")
+    };
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -93,35 +89,19 @@ else
     {
         _loading = true;
         ProductClass? pc = int.TryParse(_productClass, out var pcVal) ? (ProductClass)pcVal : null;
-        _result = await ProductService.QueryAsync(new ProductQueryDto
+        var result = await ProductService.QueryAsync(new ProductQueryDto
         {
-            Keyword = _keyword,
             ProductClass = pc,
-            Page = _page,
-            PageSize = PageSize
+            Page = 1,
+            PageSize = int.MaxValue
         });
+        _items = result.Items.ToList();
         _loading = false;
     }
 
     private async Task Search()
     {
-        _page = 1;
         await LoadAsync();
-    }
-
-    private async Task HandleKeyUp(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter") await Search();
-    }
-
-    private async Task PrevPage()
-    {
-        if (_page > 1) { _page--; await LoadAsync(); }
-    }
-
-    private async Task NextPage()
-    {
-        if (_result != null && _page < _result.TotalPages) { _page++; await LoadAsync(); }
     }
 
     private void NewProduct() => Nav.NavigateTo("/products/new");

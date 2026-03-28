@@ -23,32 +23,34 @@ else
 {
     <div class="alert alert-warning">共有 <strong>@_items.Count</strong> 項產品庫存低於安全存量，請盡快補貨。</div>
 
-    <table class="table table-sm table-bordered">
-        <thead class="table-danger">
-            <tr>
-                <th>產品編號</th>
-                <th>產品名稱</th>
-                <th>倉庫</th>
-                <th>目前庫存</th>
-                <th>安全存量</th>
-                <th>不足量</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in _items)
-            {
-                var shortage = item.SafeQty - item.CurrentStockQty;
-                <tr>
-                    <td>@item.ProductNo</td>
-                    <td>@item.ProductName</td>
-                    <td>@item.StockNo</td>
-                    <td class="text-danger fw-bold">@item.CurrentStockQty</td>
-                    <td>@item.SafeQty</td>
-                    <td class="text-danger fw-bold">@shortage</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <DxGrid Data="@_items"
+            ShowFilterRow="true"
+            PageSize="20"
+            PagerVisible="true">
+        <Columns>
+            <DxGridDataColumn FieldName="ProductNo" Caption="產品編號" />
+            <DxGridDataColumn FieldName="ProductName" Caption="產品名稱" />
+            <DxGridDataColumn FieldName="StockNo" Caption="倉庫" />
+            <DxGridDataColumn FieldName="CurrentStockQty" Caption="目前庫存">
+                <CellDisplayTemplate>
+                    @{
+                        var item = (InventoryDto)context.DataItem;
+                    }
+                    <span class="text-danger fw-bold">@item.CurrentStockQty</span>
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="SafeQty" Caption="安全存量" />
+            <DxGridDataColumn FieldName="SafeQty" Caption="不足量">
+                <CellDisplayTemplate>
+                    @{
+                        var item = (InventoryDto)context.DataItem;
+                        var shortage = item.SafeQty - item.CurrentStockQty;
+                    }
+                    <span class="text-danger fw-bold">@shortage</span>
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+        </Columns>
+    </DxGrid>
 }
 
 @code {

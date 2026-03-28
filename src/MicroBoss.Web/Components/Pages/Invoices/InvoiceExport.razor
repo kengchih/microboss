@@ -12,19 +12,20 @@
 <div class="row mb-3 g-2 align-items-end">
     <div class="col-md-2">
         <label class="form-label mb-1">開始日期</label>
-        <input type="date" class="form-control" @bind="_dateFrom" />
+        <DxDateEdit @bind-Date="@_dateFrom" />
     </div>
     <div class="col-md-2">
         <label class="form-label mb-1">結束日期</label>
-        <input type="date" class="form-control" @bind="_dateTo" />
+        <DxDateEdit @bind-Date="@_dateTo" />
     </div>
     <div class="col-md-3 d-flex gap-2 align-items-end">
-        <button class="btn btn-primary" @onclick="Search" disabled="@_loading">
-            @(_loading ? "查詢中..." : "查詢")
-        </button>
+        <DxButton Text="@(_loading ? "查詢中..." : "查詢")"
+                  RenderStyle="ButtonRenderStyle.Primary"
+                  Enabled="@(!_loading)"
+                  Click="@Search" />
         @if (_data != null && _data.Count > 0)
         {
-            <button class="btn btn-success" @onclick="ExportCsv">匯出 CSV</button>
+            <DxButton Text="匯出 CSV" RenderStyle="ButtonRenderStyle.Success" Click="@ExportCsv" />
         }
     </div>
 </div>
@@ -43,47 +44,24 @@
     else
     {
         <div class="mb-2 text-muted">共 @_data.Count 筆</div>
-        <div class="table-responsive">
-            <table class="table table-striped table-sm table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th>訂單號</th>
-                        <th>訂單日期</th>
-                        <th>客戶名稱</th>
-                        <th>統一編號</th>
-                        <th>發票抬頭</th>
-                        <th>發票類型</th>
-                        <th class="text-end">未稅金額</th>
-                        <th class="text-end">稅額</th>
-                        <th class="text-end">含稅合計</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in _data)
-                    {
-                        <tr>
-                            <td>@row.OrderNo</td>
-                            <td>@row.OrderDate.ToString("yyyy/MM/dd")</td>
-                            <td>@row.CustomerName</td>
-                            <td>@row.UniteNo</td>
-                            <td>@row.InvoiceTitle</td>
-                            <td>@row.InvoiceTypeName</td>
-                            <td class="text-end">@row.ItemAmount.ToString("N2")</td>
-                            <td class="text-end">@row.TaxAmount.ToString("N2")</td>
-                            <td class="text-end">@row.TotalAmount.ToString("N2")</td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot class="table-light fw-bold">
-                    <tr>
-                        <td colspan="6">合計</td>
-                        <td class="text-end">@_data.Sum(d => d.ItemAmount).ToString("N2")</td>
-                        <td class="text-end">@_data.Sum(d => d.TaxAmount).ToString("N2")</td>
-                        <td class="text-end">@_data.Sum(d => d.TotalAmount).ToString("N2")</td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
+        <DxGrid Data="@_data" ShowFilterRow="true" PageSize="50">
+            <Columns>
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.OrderNo)" Caption="訂單號" />
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.OrderDate)" Caption="訂單日期" DisplayFormat="yyyy/MM/dd" />
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.CustomerName)" Caption="客戶名稱" />
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.UniteNo)" Caption="統一編號" />
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.InvoiceTitle)" Caption="發票抬頭" />
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.InvoiceTypeName)" Caption="發票類型" />
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.ItemAmount)" Caption="未稅金額" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" />
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.TaxAmount)" Caption="稅額" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" />
+                <DxGridDataColumn FieldName="@nameof(InvoiceExportDto.TotalAmount)" Caption="含稅合計" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" />
+            </Columns>
+            <TotalSummary>
+                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="@nameof(InvoiceExportDto.ItemAmount)" ValueDisplayFormat="N2" FooterColumnName="@nameof(InvoiceExportDto.ItemAmount)" />
+                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="@nameof(InvoiceExportDto.TaxAmount)" ValueDisplayFormat="N2" FooterColumnName="@nameof(InvoiceExportDto.TaxAmount)" />
+                <DxGridSummaryItem SummaryType="GridSummaryItemType.Sum" FieldName="@nameof(InvoiceExportDto.TotalAmount)" ValueDisplayFormat="N2" FooterColumnName="@nameof(InvoiceExportDto.TotalAmount)" />
+            </TotalSummary>
+        </DxGrid>
     }
 }
 

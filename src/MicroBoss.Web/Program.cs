@@ -14,6 +14,7 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
+    builder.Services.AddDevExpressBlazor();
     builder.Services.AddRazorComponents()
         .AddInteractiveServerComponents();
     builder.Services.AddControllers();

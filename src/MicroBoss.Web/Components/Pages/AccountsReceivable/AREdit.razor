@@ -14,7 +14,7 @@
 else if (_ar == null)
 {
     <div class="alert alert-danger">找不到此應收帳款記錄</div>
-    <button class="btn btn-secondary" @onclick="GoBack">返回</button>
+    <DxButton Text="返回" RenderStyle="ButtonRenderStyle.Secondary" Click="@GoBack" />
 }
 else
 {
@@ -38,50 +38,42 @@ else
     <div class="card mb-3">
         <div class="card-header">基本資料</div>
         <div class="card-body">
-            <div class="row g-2">
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">單號</label>
-                    <div class="form-control-plaintext">@_ar.Number</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">結帳日期</label>
-                    <div class="form-control-plaintext">@_ar.SettleDate.ToString("yyyy/MM/dd")</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">客戶編號</label>
-                    <div class="form-control-plaintext">@_ar.CustomerId</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">狀態</label>
-                    <div class="form-control-plaintext">@GetStatusText(_ar.Status)</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">訂單品項金額</label>
-                    <div class="form-control-plaintext text-end">@_ar.OrderItemAmount.ToString("N2")</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">稅額</label>
-                    <div class="form-control-plaintext text-end">@_ar.OrderTaxAmount.ToString("N2")</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">訂單合計</label>
-                    <div class="form-control-plaintext text-end">@_ar.OrderTotalAmount.ToString("N2")</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">應收總額</label>
-                    <div class="form-control-plaintext text-end fw-bold">@_ar.TotalAmount.ToString("N2")</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">實收金額</label>
-                    <div class="form-control-plaintext text-end text-success fw-bold">@_ar.ActualAmount.ToString("N2")</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">差額</label>
-                    <div class="form-control-plaintext text-end @((_ar.TotalAmount - _ar.ActualAmount) > 0 ? "text-danger" : "text-success") fw-bold">
-                        @((_ar.TotalAmount - _ar.ActualAmount).ToString("N2"))
-                    </div>
-                </div>
-            </div>
+            <DxFormLayout>
+                <DxFormLayoutItem Caption="單號" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext">@_ar.Number</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="結帳日期" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext">@_ar.SettleDate.ToString("yyyy/MM/dd")</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="客戶編號" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext">@_ar.CustomerId</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="狀態" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext">@GetStatusText(_ar.Status)</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="訂單品項金額" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext text-end">@_ar.OrderItemAmount.ToString("N2")</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="稅額" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext text-end">@_ar.OrderTaxAmount.ToString("N2")</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="訂單合計" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext text-end">@_ar.OrderTotalAmount.ToString("N2")</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="應收總額" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext text-end fw-bold">@_ar.TotalAmount.ToString("N2")</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="實收金額" ColSpanMd="3">
+                    <Template><div class="form-control-plaintext text-end text-success fw-bold">@_ar.ActualAmount.ToString("N2")</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="差額" ColSpanMd="3">
+                    <Template>
+                        <div class="form-control-plaintext text-end @((_ar.TotalAmount - _ar.ActualAmount) > 0 ? "text-danger" : "text-success") fw-bold">
+                            @((_ar.TotalAmount - _ar.ActualAmount).ToString("N2"))
+                        </div>
+                    </Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
         </div>
     </div>
 
@@ -89,31 +81,18 @@ else
     <div class="card mb-3">
         <div class="card-header">訂單明細</div>
         <div class="card-body p-0">
-            <table class="table table-sm table-bordered mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>類型</th>
-                        <th>訂單號</th>
-                        <th class="text-end">金額</th>
-                        <th>備註</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var detail in _ar.Details)
-                    {
-                        <tr>
-                            <td>@GetDetailTypeText(detail.Type)</td>
-                            <td>@detail.OrderNo</td>
-                            <td class="text-end">@detail.Amount.ToString("N2")</td>
-                            <td>@detail.Note</td>
-                        </tr>
-                    }
-                    @if (_ar.Details.Count == 0)
-                    {
-                        <tr><td colspan="4" class="text-center text-muted">無明細資料</td></tr>
-                    }
-                </tbody>
-            </table>
+            <DxGrid Data="@_ar.Details" ShowFilterRow="false" PageSize="100">
+                <Columns>
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivableDetailDto.Type)" Caption="類型">
+                        <CellDisplayTemplate>
+                            @GetDetailTypeText(((AccountsReceivableDetailDto)context.DataItem).Type)
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivableDetailDto.OrderNo)" Caption="訂單號" />
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivableDetailDto.Amount)" Caption="金額" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" />
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivableDetailDto.Note)" Caption="備註" />
+                </Columns>
+            </DxGrid>
         </div>
     </div>
 
@@ -121,37 +100,21 @@ else
     <div class="card mb-3">
         <div class="card-header">收款紀錄</div>
         <div class="card-body p-0">
-            <table class="table table-sm table-bordered mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>收款日期</th>
-                        <th>類型</th>
-                        <th class="text-end">金額</th>
-                        <th>帳號</th>
-                        <th>銀行</th>
-                        <th>支票號碼</th>
-                        <th>備註</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var posting in _ar.Postings)
-                    {
-                        <tr>
-                            <td>@posting.PostingDate.ToString("yyyy/MM/dd")</td>
-                            <td>@GetPostingTypeText(posting.Type)</td>
-                            <td class="text-end">@posting.Amount.ToString("N2")</td>
-                            <td>@posting.Account</td>
-                            <td>@posting.Bank</td>
-                            <td>@posting.CheckNumber</td>
-                            <td>@posting.Note</td>
-                        </tr>
-                    }
-                    @if (_ar.Postings.Count == 0)
-                    {
-                        <tr><td colspan="7" class="text-center text-muted">無收款記錄</td></tr>
-                    }
-                </tbody>
-            </table>
+            <DxGrid Data="@_ar.Postings" ShowFilterRow="false" PageSize="100">
+                <Columns>
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivablePostingDto.PostingDate)" Caption="收款日期" DisplayFormat="yyyy/MM/dd" />
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivablePostingDto.Type)" Caption="類型">
+                        <CellDisplayTemplate>
+                            @GetPostingTypeText(((AccountsReceivablePostingDto)context.DataItem).Type)
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivablePostingDto.Amount)" Caption="金額" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" />
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivablePostingDto.Account)" Caption="帳號" />
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivablePostingDto.Bank)" Caption="銀行" />
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivablePostingDto.CheckNumber)" Caption="支票號碼" />
+                    <DxGridDataColumn FieldName="@nameof(AccountsReceivablePostingDto.Note)" Caption="備註" />
+                </Columns>
+            </DxGrid>
         </div>
     </div>
 
@@ -161,60 +124,68 @@ else
         <div class="card mb-3">
             <div class="card-header">新增收款</div>
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-2">
-                        <label class="form-label">收款日期 <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control" @bind="_postingDto.PostingDate" />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">收款類型 <span class="text-danger">*</span></label>
-                        <select class="form-select" @bind="_postingTypeStr">
-                            <option value="0">現金</option>
-                            <option value="1">匯款</option>
-                            <option value="2">支票</option>
-                            <option value="8">調帳</option>
-                            <option value="9">其他</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">金額 <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" @bind="_postingDto.Amount" step="0.01" />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">帳號</label>
-                        <input class="form-control" @bind="_postingDto.Account" />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">銀行</label>
-                        <input class="form-control" @bind="_postingDto.Bank" />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">支票號碼</label>
-                        <input class="form-control" @bind="_postingDto.CheckNumber" />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">支票日期</label>
-                        <input type="date" class="form-control" @bind="_postingDto.CheckDate" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">備註</label>
-                        <input class="form-control" @bind="_postingDto.Note" />
-                    </div>
-                    <div class="col-12">
-                        <button class="btn btn-primary" @onclick="AddPosting" disabled="@_saving">
-                            @(_saving ? "儲存中..." : "新增收款")
-                        </button>
-                    </div>
-                </div>
+                <DxFormLayout>
+                    <DxFormLayoutItem Caption="收款日期 *" ColSpanMd="3">
+                        <Template>
+                            <DxDateEdit @bind-Date="@_postingDto.PostingDate" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="收款類型 *" ColSpanMd="3">
+                        <Template>
+                            <DxComboBox Data="@_postingTypeOptions"
+                                        @bind-Value="@_postingTypeStr"
+                                        TextFieldName="@nameof(PostingTypeOption.Label)"
+                                        ValueFieldName="@nameof(PostingTypeOption.Value)" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="金額 *" ColSpanMd="3">
+                        <Template>
+                            <DxSpinEdit @bind-Value="@_postingDto.Amount" Increment="0.01m" MinValue="0" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="帳號" ColSpanMd="3">
+                        <Template>
+                            <DxTextBox @bind-Text="@_postingDto.Account" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="銀行" ColSpanMd="3">
+                        <Template>
+                            <DxTextBox @bind-Text="@_postingDto.Bank" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="支票號碼" ColSpanMd="3">
+                        <Template>
+                            <DxTextBox @bind-Text="@_postingDto.CheckNumber" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="支票日期" ColSpanMd="3">
+                        <Template>
+                            <DxDateEdit @bind-Date="@_postingDto.CheckDate" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem Caption="備註" ColSpanMd="6">
+                        <Template>
+                            <DxTextBox @bind-Text="@_postingDto.Note" />
+                        </Template>
+                    </DxFormLayoutItem>
+                    <DxFormLayoutItem ColSpanMd="12">
+                        <Template>
+                            <DxButton Text="@(_saving ? "儲存中..." : "新增收款")"
+                                      RenderStyle="ButtonRenderStyle.Primary"
+                                      Enabled="@(!_saving)"
+                                      Click="@AddPosting" />
+                        </Template>
+                    </DxFormLayoutItem>
+                </DxFormLayout>
             </div>
         </div>
     }
 
     <div class="d-flex gap-2 mt-2">
-        <button class="btn btn-secondary" @onclick="GoBack">返回</button>
+        <DxButton Text="返回" RenderStyle="ButtonRenderStyle.Secondary" Click="@GoBack" />
         @if (_ar.Status == AccountsReceivableStatus.Unpaid)
         {
-            <button class="btn btn-success" @onclick="Close" disabled="@_saving">結帳</button>
+            <DxButton Text="結帳" RenderStyle="ButtonRenderStyle.Success" Enabled="@(!_saving)" Click="@Close" />
         }
     </div>
 }
@@ -236,6 +207,16 @@ else
         PostingDate = DateTime.Today
     };
     private string _postingTypeStr = "0";
+
+    private record PostingTypeOption(string Value, string Label);
+    private static readonly List<PostingTypeOption> _postingTypeOptions =
+    [
+        new("0", "現金"),
+        new("1", "匯款"),
+        new("2", "支票"),
+        new("8", "調帳"),
+        new("9", "其他"),
+    ];
 
     protected override async Task OnInitializedAsync()
     {

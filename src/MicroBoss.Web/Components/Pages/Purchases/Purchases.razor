@@ -12,21 +12,22 @@
 
 <div class="row mb-3 g-2 align-items-end">
     <div class="col-auto">
-        <input class="form-control" placeholder="搜尋採購單號、供應商..."
-               @bind="_keyword" @bind:event="oninput" @onkeyup="OnKeywordKeyUp" />
+        <DxTextBox Text="@_keyword"
+                   NullText="搜尋採購單號、供應商..."
+                   TextChanged="@OnKeywordChanged" />
     </div>
     <div class="col-auto">
-        <input type="date" class="form-control" @bind="_dateFrom" />
+        <DxDateEdit @bind-Date="@_dateFrom" />
     </div>
     <div class="col-auto">
-        <input type="date" class="form-control" @bind="_dateTo" />
+        <DxDateEdit @bind-Date="@_dateTo" />
     </div>
     <div class="col-auto">
-        <select class="form-select" @bind="_statusFilter">
-            <option value="">全部狀態</option>
-            <option value="0">待處理</option>
-            <option value="1">已採購</option>
-        </select>
+        <DxComboBox Data="@_statusOptions"
+                    TextFieldName="@nameof(StatusOption.Label)"
+                    ValueFieldName="@nameof(StatusOption.Value)"
+                    @bind-Value="@_statusFilter"
+                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
     </div>
     <div class="col-auto">
         <button class="btn btn-primary btn-sm" @onclick="Search">搜尋</button>
@@ -42,49 +43,36 @@
 }
 else
 {
-    <table class="table table-striped table-sm table-hover">
-        <thead>
-            <tr>
-                <th>採購單號</th>
-                <th>供應商</th>
-                <th>採購日期</th>
-                <th>狀態</th>
-                <th>稅額</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var p in _result.Items)
-            {
-                <tr style="cursor:pointer;" @onclick="() => EditPurchase(p.PurchaseId)">
-                    <td>@p.PurchaseId</td>
-                    <td>@p.SupplierShortName</td>
-                    <td>@p.PurchaseDate?.ToString("yyyy/MM/dd")</td>
-                    <td>@GetStatusText(p.Status)</td>
-                    <td>@p.TaxAmount.ToString("N2")</td>
-                    <td @onclick:stopPropagation>
-                        <button class="btn btn-outline-primary btn-sm"
-                                @onclick="() => EditPurchase(p.PurchaseId)">編輯</button>
-                        <button class="btn btn-outline-danger btn-sm"
-                                @onclick="() => ConfirmDelete(p)">刪除</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    <div class="d-flex align-items-center gap-3">
-        <span class="text-muted small">共 @_result.TotalCount 筆，第 @_result.Page / @_result.TotalPages 頁</span>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page <= 1)"
-                @onclick="PreviousPage">上一頁</button>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page >= _result.TotalPages)"
-                @onclick="NextPage">下一頁</button>
-        <select class="form-select form-select-sm w-auto" @bind="_pageSize" @bind:after="Search">
-            <option value="10">10 筆/頁</option>
-            <option value="20">20 筆/頁</option>
-            <option value="50">50 筆/頁</option>
-        </select>
-    </div>
+    <DxGrid Data="@_result.Items"
+            ShowFilterRow="true"
+            PageSize="20"
+            PagerVisible="true">
+        <Columns>
+            <DxGridDataColumn FieldName="PurchaseId" Caption="採購單號" />
+            <DxGridDataColumn FieldName="SupplierShortName" Caption="供應商" />
+            <DxGridDataColumn FieldName="PurchaseDate" Caption="採購日期" DisplayFormat="yyyy/MM/dd" />
+            <DxGridDataColumn FieldName="Status" Caption="狀態">
+                <CellDisplayTemplate>
+                    @{
+                        var p = (PurchaseDto)context.DataItem;
+                    }
+                    @GetStatusText(p.Status)
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="TaxAmount" Caption="稅額" DisplayFormat="N2" />
+            <DxGridCommandColumn Width="150px">
+                <CellDisplayTemplate>
+                    @{
+                        var p = (PurchaseDto)context.DataItem;
+                    }
+                    <button class="btn btn-outline-primary btn-sm"
+                            @onclick="() => EditPurchase(p.PurchaseId)">編輯</button>
+                    <button class="btn btn-outline-danger btn-sm"
+                            @onclick="() => ConfirmDelete(p)">刪除</button>
+                </CellDisplayTemplate>
+            </DxGridCommandColumn>
+        </Columns>
+    </DxGrid>
 }
 
 @if (_showConfirm && _deletingPurchase != null)
@@ -116,17 +104,28 @@ else
     private string? _keyword;
     private DateTime? _dateFrom;
     private DateTime? _dateTo;
-    private string _statusFilter = "";
+    private string? _statusFilter;
     private int _page = 1;
     private int _pageSize = 20;
     private bool _showConfirm;
     private PurchaseDto? _deletingPurchase;
 
+    private record StatusOption(string Label, string? Value);
+
+    private readonly List<StatusOption> _statusOptions = new()
+    {
+        new("全部狀態", null),
+        new("待處理", "0"),
+        new("已採購", "1"),
+    };
+
     protected override async Task OnInitializedAsync() => await LoadData();
 
     private async Task LoadData()
     {
-        PurchaseStatus? status = int.TryParse(_statusFilter, out var sv) ? (PurchaseStatus)sv : null;
+        PurchaseStatus? status = !string.IsNullOrEmpty(_statusFilter) && int.TryParse(_statusFilter, out var sv)
+            ? (PurchaseStatus)sv
+            : null;
 
         _result = await PurchaseService.QueryAsync(new PurchaseQueryDto
         {
@@ -145,19 +144,10 @@ else
         await LoadData();
     }
 
-    private async Task OnKeywordKeyUp(KeyboardEventArgs e)
+    private async Task OnKeywordChanged(string? value)
     {
-        if (e.Key == "Enter") await Search();
-    }
-
-    private async Task PreviousPage()
-    {
-        if (_page > 1) { _page--; await LoadData(); }
-    }
-
-    private async Task NextPage()
-    {
-        if (_result != null && _page < _result.TotalPages) { _page++; await LoadData(); }
+        _keyword = value;
+        await Task.CompletedTask;
     }
 
     private void NewPurchase() => Nav.NavigateTo("/purchases/new");
@@ -188,8 +178,8 @@ else
 
     private static string GetStatusText(PurchaseStatus? status) => status switch
     {
-        PurchaseStatus.Pending => "待處理",
+        PurchaseStatus.Pending   => "待處理",
         PurchaseStatus.Purchased => "已採購",
-        _ => "未知"
+        _                        => "未知"
     };
 }

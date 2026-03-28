@@ -13,21 +13,19 @@
 <div class="row g-3 mb-3">
     <div class="col-md-4">
         <label class="form-label mb-1">客戶</label>
-        <select class="form-select" @bind="_customerId">
-            <option value="">-- 選擇客戶 --</option>
-            @foreach (var c in _customers)
-            {
-                <option value="@c.CustomerId">@c.CustomerName</option>
-            }
-        </select>
+        <DxComboBox T="string" Data="@_customers"
+                    @bind-Value="@_customerId"
+                    TextFieldName="@nameof(CustomerDto.CustomerName)"
+                    ValueFieldName="@nameof(CustomerDto.CustomerId)"
+                    NullText="-- 選擇客戶 --"
+                    ShowSearchBox="true" />
     </div>
     <div class="col-md-5">
         <label class="form-label mb-1">產品編號 / 條碼</label>
-        <div class="input-group">
-            <input class="form-control" placeholder="輸入產品編號或條碼後按 Enter"
-                   @bind="_productSearch" @bind:event="oninput"
-                   @onkeyup="OnProductSearchKeyUp" />
-            <button class="btn btn-outline-secondary" @onclick="AddProduct">加入</button>
+        <div class="input-group" @onkeydown="@OnProductSearchKeyDown">
+            <DxTextBox @bind-Text="@_productSearch"
+                       NullText="輸入產品編號或條碼後按 Enter" />
+            <DxButton Text="加入" RenderStyle="ButtonRenderStyle.Secondary" Click="@AddProduct" />
         </div>
         @if (!string.IsNullOrEmpty(_searchError))
         {
@@ -36,74 +34,61 @@
     </div>
     <div class="col-md-3">
         <label class="form-label mb-1">訂單日期</label>
-        <input type="date" class="form-control" @bind="_orderDate" />
+        <DxDateEdit @bind-Date="@_orderDate" />
     </div>
 </div>
 
 @if (_cartItems.Count > 0)
 {
-    <table class="table table-sm table-bordered">
-        <thead class="table-light">
-            <tr>
-                <th>產品編號</th>
-                <th>產品名稱</th>
-                <th style="width:120px;">數量</th>
-                <th style="width:120px;">單價</th>
-                <th style="width:110px;">小計</th>
-                <th style="width:60px;"></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in _cartItems)
-            {
-                <tr>
-                    <td>@item.ProductNo</td>
-                    <td>@item.ProductName</td>
-                    <td>
-                        <div class="input-group input-group-sm">
-                            <button class="btn btn-outline-secondary" @onclick="() => ChangeQty(item, -1)">-</button>
-                            <input type="number" class="form-control text-center" min="1"
-                                   @bind="item.OrderQty" @bind:event="oninput"
-                                   @onchange="() => RecalcItem(item)" style="width:50px;" />
-                            <button class="btn btn-outline-secondary" @onclick="() => ChangeQty(item, 1)">+</button>
-                        </div>
-                    </td>
-                    <td>
-                        <input type="number" class="form-control form-control-sm text-end" min="0" step="0.01"
-                               @bind="item.ItemPrice" @bind:event="oninput"
-                               @onchange="() => RecalcItem(item)" />
-                    </td>
-                    <td class="text-end">@item.ItemAmount.ToString("N2")</td>
-                    <td class="text-center">
-                        <button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveItem(item)">✕</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <DxGrid Data="@_cartItems" ShowFilterRow="false" PageSize="100">
+        <Columns>
+            <DxGridDataColumn FieldName="@nameof(CartItem.ProductNo)" Caption="產品編號" />
+            <DxGridDataColumn FieldName="@nameof(CartItem.ProductName)" Caption="產品名稱" />
+            <DxGridDataColumn Caption="數量" Width="150px">
+                <CellDisplayTemplate>
+                    @{ var item = (CartItem)context.DataItem; }
+                    <div class="input-group input-group-sm">
+                        <DxButton Text="-" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => ChangeQty(item, -1))" />
+                        <DxSpinEdit Value="@item.OrderQty" ValueChanged="@((int v) => { item.OrderQty = v; RecalcItem(item); })" MinValue="1" />
+                        <DxButton Text="+" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => ChangeQty(item, 1))" />
+                    </div>
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn Caption="單價" Width="130px">
+                <CellDisplayTemplate>
+                    @{ var item = (CartItem)context.DataItem; }
+                    <DxSpinEdit Value="@item.ItemPrice" ValueChanged="@((decimal v) => { item.ItemPrice = v; RecalcItem(item); })" MinValue="0" Increment="0.01m" />
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="@nameof(CartItem.ItemAmount)" Caption="小計" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" Width="110px" />
+            <DxGridDataColumn Caption="" Width="60px">
+                <CellDisplayTemplate>
+                    @{ var item = (CartItem)context.DataItem; }
+                    <DxButton Text="✕" RenderStyle="ButtonRenderStyle.Danger" Click="@(() => RemoveItem(item))" />
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+        </Columns>
+    </DxGrid>
 
-    <div class="row justify-content-end">
+    <div class="row justify-content-end mt-2">
         <div class="col-md-4">
-            <table class="table table-sm">
-                <tr>
-                    <td class="text-end">小計</td>
-                    <td class="text-end fw-bold" style="width:120px;">@_subTotal.ToString("N2")</td>
-                </tr>
-                <tr>
-                    <td class="text-end">稅額 (5%)</td>
-                    <td class="text-end">@_tax.ToString("N2")</td>
-                </tr>
-                <tr class="table-active">
-                    <td class="text-end fw-bold">合計</td>
-                    <td class="text-end fw-bold fs-5">@_total.ToString("N2")</td>
-                </tr>
-            </table>
+            <DxFormLayout>
+                <DxFormLayoutItem Caption="小計" ColSpanMd="12">
+                    <Template><div class="form-control-plaintext text-end fw-bold">@_subTotal.ToString("N2")</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="稅額 (5%)" ColSpanMd="12">
+                    <Template><div class="form-control-plaintext text-end">@_tax.ToString("N2")</div></Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="合計" ColSpanMd="12">
+                    <Template><div class="form-control-plaintext text-end fw-bold fs-5">@_total.ToString("N2")</div></Template>
+                </DxFormLayoutItem>
+            </DxFormLayout>
         </div>
     </div>
 
-    <div class="d-flex gap-2">
-        <button class="btn btn-success" @onclick="CompleteOrder" disabled="@_busy">完成訂單</button>
-        <button class="btn btn-outline-secondary" @onclick="ClearCart" disabled="@_busy">清空購物車</button>
+    <div class="d-flex gap-2 mt-2">
+        <DxButton Text="完成訂單" RenderStyle="ButtonRenderStyle.Success" Enabled="@(!_busy)" Click="@CompleteOrder" />
+        <DxButton Text="清空購物車" RenderStyle="ButtonRenderStyle.Secondary" Enabled="@(!_busy)" Click="@ClearCart" />
     </div>
 }
 else
@@ -148,7 +133,7 @@ else
         _customers = result.Items;
     }
 
-    private async Task OnProductSearchKeyUp(KeyboardEventArgs e)
+    private async Task OnProductSearchKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
             await AddProduct();

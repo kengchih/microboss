@@ -9,7 +9,7 @@
 <h4>使用者管理</h4>
 
 <div class="mb-3">
-    <button class="btn btn-primary btn-sm" @onclick="ShowCreateForm">新增使用者</button>
+    <DxButton Text="新增使用者" RenderStyle="ButtonRenderStyle.Primary" Click="@ShowCreateForm" />
 </div>
 
 @if (_accounts == null)
@@ -18,155 +18,125 @@
 }
 else
 {
-    <table class="table table-striped table-sm">
-        <thead>
-            <tr>
-                <th>帳號</th>
-                <th>姓名</th>
-                <th>Email</th>
-                <th>角色</th>
-                <th>啟用</th>
-                <th>最後登入</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var account in _accounts)
-            {
-                <tr>
-                    <td>@account.Id</td>
-                    <td>@account.UserName</td>
-                    <td>@account.Email</td>
-                    <td>@account.RoleName</td>
-                    <td>@(account.IsEnabled ? "是" : "否")</td>
-                    <td>@account.LastLoginTime?.ToString("yyyy/MM/dd HH:mm")</td>
-                    <td>
-                        <button class="btn btn-outline-primary btn-sm" @onclick="() => ShowEditForm(account)">編輯</button>
-                        <button class="btn btn-outline-warning btn-sm" @onclick="() => ShowResetPassword(account)">重設密碼</button>
-                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteAccount(account)">刪除</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <DxGrid Data="@_accounts" ShowFilterRow="true" PageSize="20">
+        <Columns>
+            <DxGridDataColumn FieldName="@nameof(AccountDto.Id)" Caption="帳號" />
+            <DxGridDataColumn FieldName="@nameof(AccountDto.UserName)" Caption="姓名" />
+            <DxGridDataColumn FieldName="@nameof(AccountDto.Email)" Caption="Email" />
+            <DxGridDataColumn FieldName="@nameof(AccountDto.RoleName)" Caption="角色" />
+            <DxGridDataColumn FieldName="@nameof(AccountDto.IsEnabled)" Caption="啟用">
+                <CellDisplayTemplate>
+                    @(((AccountDto)context.DataItem).IsEnabled ? "是" : "否")
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="@nameof(AccountDto.LastLoginTime)" Caption="最後登入" DisplayFormat="yyyy/MM/dd HH:mm" />
+            <DxGridDataColumn Caption="操作" Width="220px">
+                <CellDisplayTemplate>
+                    @{ var account = (AccountDto)context.DataItem; }
+                    <DxButton Text="編輯" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => ShowEditForm(account))" />
+                    <DxButton Text="重設密碼" RenderStyle="ButtonRenderStyle.Warning" Click="@(() => ShowResetPassword(account))" />
+                    <DxButton Text="刪除" RenderStyle="ButtonRenderStyle.Danger" Click="@(() => DeleteAccount(account))" />
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+        </Columns>
+    </DxGrid>
 }
 
-@if (_showForm)
-{
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(_isEditing ? "編輯使用者" : "新增使用者")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(_formError))
-                    {
-                        <div class="alert alert-danger">@_formError</div>
-                    }
-                    @if (!_isEditing)
-                    {
-                        <div class="mb-3">
-                            <label class="form-label">帳號</label>
-                            <input class="form-control" @bind="_createDto.UserId" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">密碼</label>
-                            <input type="password" class="form-control" @bind="_createDto.Password" />
-                        </div>
-                    }
-                    <div class="mb-3">
-                        <label class="form-label">姓名</label>
-                        @if (_isEditing)
-                        {
-                            <input class="form-control" @bind="_updateDto.UserName" />
-                        }
-                        else
-                        {
-                            <input class="form-control" @bind="_createDto.UserName" />
-                        }
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        @if (_isEditing)
-                        {
-                            <input class="form-control" @bind="_updateDto.Email" />
-                        }
-                        else
-                        {
-                            <input class="form-control" @bind="_createDto.Email" />
-                        }
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">角色</label>
-                        @if (_isEditing)
-                        {
-                            <select class="form-select" @bind="_updateDto.RoleName">
-                                <option value="">請選擇</option>
-                                @if (_roles != null)
-                                {
-                                    @foreach (var role in _roles)
-                                    {
-                                        <option value="@role.Name">@role.Name</option>
-                                    }
-                                }
-                            </select>
-                        }
-                        else
-                        {
-                            <select class="form-select" @bind="_createDto.RoleName">
-                                <option value="">請選擇</option>
-                                @if (_roles != null)
-                                {
-                                    @foreach (var role in _roles)
-                                    {
-                                        <option value="@role.Name">@role.Name</option>
-                                    }
-                                }
-                            </select>
-                        }
-                    </div>
+<!-- Create/Edit Popup -->
+<DxPopup @bind-Visible="@_showForm" HeaderText="@(_isEditing ? "編輯使用者" : "新增使用者")" Width="500px">
+    <BodyContentTemplate Context="_popupContext">
+        @if (!string.IsNullOrEmpty(_formError))
+        {
+            <div class="alert alert-danger">@_formError</div>
+        }
+        <DxFormLayout>
+            @if (!_isEditing)
+            {
+                <DxFormLayoutItem Caption="帳號" ColSpanMd="12">
+                    <Template Context="_">
+                        <DxTextBox @bind-Text="@_createDto.UserId" />
+                    </Template>
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="密碼" ColSpanMd="12">
+                    <Template Context="_">
+                        <DxTextBox @bind-Text="@_createDto.Password" Password="true" />
+                    </Template>
+                </DxFormLayoutItem>
+            }
+            <DxFormLayoutItem Caption="姓名" ColSpanMd="12">
+                <Template Context="_">
                     @if (_isEditing)
                     {
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" @bind="_updateIsEnabled" />
-                            <label class="form-check-label">啟用</label>
-                        </div>
+                        <DxTextBox @bind-Text="@_updateDto.UserName" />
                     }
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CloseForm">取消</button>
-                    <button class="btn btn-primary" @onclick="SaveAccount">儲存</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+                    else
+                    {
+                        <DxTextBox @bind-Text="@_createDto.UserName" />
+                    }
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Email" ColSpanMd="12">
+                <Template Context="_">
+                    @if (_isEditing)
+                    {
+                        <DxTextBox @bind-Text="@_updateDto.Email" />
+                    }
+                    else
+                    {
+                        <DxTextBox @bind-Text="@_createDto.Email" />
+                    }
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="角色" ColSpanMd="12">
+                <Template Context="_">
+                    @if (_isEditing)
+                    {
+                        <DxComboBox Data="@_roles" @bind-Value="@_updateDto.RoleName"
+                                    TextFieldName="@nameof(RoleDto.Name)"
+                                    ValueFieldName="@nameof(RoleDto.Name)"
+                                    NullText="請選擇" />
+                    }
+                    else
+                    {
+                        <DxComboBox Data="@_roles" @bind-Value="@_createDto.RoleName"
+                                    TextFieldName="@nameof(RoleDto.Name)"
+                                    ValueFieldName="@nameof(RoleDto.Name)"
+                                    NullText="請選擇" />
+                    }
+                </Template>
+            </DxFormLayoutItem>
+            @if (_isEditing)
+            {
+                <DxFormLayoutItem Caption="啟用" ColSpanMd="12">
+                    <Template Context="_">
+                        <DxCheckBox @bind-Checked="@_updateIsEnabled" />
+                    </Template>
+                </DxFormLayoutItem>
+            }
+        </DxFormLayout>
+    </BodyContentTemplate>
+    <FooterContentTemplate Context="_popupFooter">
+        <DxButton Text="取消" RenderStyle="ButtonRenderStyle.Secondary" Click="@CloseForm" />
+        <DxButton Text="儲存" RenderStyle="ButtonRenderStyle.Primary" Click="@SaveAccount" />
+    </FooterContentTemplate>
+</DxPopup>
 
-@if (_showResetPassword)
-{
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">重設密碼 - @_selectedAccount?.UserName</h5>
-                    <button type="button" class="btn-close" @onclick="() => _showResetPassword = false"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">新密碼</label>
-                        <input type="password" class="form-control" @bind="_newPassword" />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="() => _showResetPassword = false">取消</button>
-                    <button class="btn btn-primary" @onclick="DoResetPassword">確認</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<!-- Reset Password Popup -->
+<DxPopup @bind-Visible="@_showResetPassword" HeaderText="@($"重設密碼 - {_selectedAccount?.UserName}")" Width="400px">
+    <BodyContentTemplate Context="_popupContext">
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="新密碼" ColSpanMd="12">
+                <Template Context="_">
+                    <DxTextBox @bind-Text="@_newPassword" Password="true" />
+                </Template>
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </BodyContentTemplate>
+    <FooterContentTemplate Context="_popupFooter">
+        <DxButton Text="取消" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => _showResetPassword = false)" />
+        <DxButton Text="確認" RenderStyle="ButtonRenderStyle.Primary" Click="@DoResetPassword" />
+    </FooterContentTemplate>
+</DxPopup>
 
 @code {
     [Inject] private IAccountService AccountService { get; set; } = default!;

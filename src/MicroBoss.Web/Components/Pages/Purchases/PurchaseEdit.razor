@@ -26,43 +26,32 @@ else
             <div class="card mb-3">
                 <div class="card-header">採購單基本資料</div>
                 <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">供應商編號</label>
-                            <input class="form-control" @bind="_dto.SupplierId"
-                                   @bind:event="oninput" @onchange="OnSupplierIdChanged" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">供應商名稱</label>
-                            <input class="form-control" value="@_supplierName" readonly />
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">採購日期</label>
-                            <input type="date" class="form-control" @bind="_purchaseDate" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">稅別</label>
-                            <select class="form-select" @bind="_taxTypeStr" @bind:after="RecalcTax">
-                                <option value="0">無稅</option>
-                                <option value="1">內含稅</option>
-                                <option value="2">外加稅</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">發票類型</label>
-                            <select class="form-select" @bind="_invoiceTypeStr">
-                                <option value="0">無</option>
-                                <option value="2">二聯式</option>
-                                <option value="3">三聯式</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">採購備註</label>
-                        <textarea class="form-control" rows="2" @bind="_dto.PurchaseNote"></textarea>
-                    </div>
+                    <DxFormLayout>
+                        <DxFormLayoutItem Caption="供應商編號" ColSpanMd="6">
+                            <DxTextBox @bind-Text="@_dto.SupplierId" @bind-Text:after="LookupSupplier" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="供應商名稱" ColSpanMd="6">
+                            <DxTextBox Value="@_supplierName" ReadOnly="true" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="採購日期" ColSpanMd="4">
+                            <DxDateEdit @bind-Date="@_purchaseDate" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="稅別" ColSpanMd="4">
+                            <DxComboBox T="KeyValueOption" Data="@_taxTypeOptions"
+                                        TextFieldName="@nameof(KeyValueOption.Label)"
+                                        Value="@_taxTypeOption"
+                                        ValueChanged="@((KeyValueOption opt) => OnTaxTypeOptionChanged(opt))" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="發票類型" ColSpanMd="4">
+                            <DxComboBox T="KeyValueOption" Data="@_invoiceTypeOptions"
+                                        TextFieldName="@nameof(KeyValueOption.Label)"
+                                        Value="@_invoiceTypeOption"
+                                        ValueChanged="@((KeyValueOption opt) => OnInvoiceTypeOptionChanged(opt))" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="採購備註" ColSpanMd="12">
+                            <DxMemo @bind-Text="@_dto.PurchaseNote" Rows="2" />
+                        </DxFormLayoutItem>
+                    </DxFormLayout>
                 </div>
             </div>
         </div>
@@ -79,7 +68,9 @@ else
                         <dt class="col-6">稅額</dt>
                         <dd class="col-6 text-end">@_taxAmount.ToString("N2")</dd>
                         <dt class="col-6 fw-bold">合計</dt>
-                        <dd class="col-6 text-end fw-bold">@(_taxTypeStr == "2" ? (_subTotal + _taxAmount).ToString("N2") : _subTotal.ToString("N2"))</dd>
+                        <dd class="col-6 text-end fw-bold">
+                            @(_taxTypeStr == "2" ? (_subTotal + _taxAmount).ToString("N2") : _subTotal.ToString("N2"))
+                        </dd>
                     </dl>
                 </div>
             </div>
@@ -92,61 +83,55 @@ else
             <button class="btn btn-sm btn-outline-success" @onclick="AddDetailRow">+ 新增明細</button>
         </div>
         <div class="card-body p-0">
-            <table class="table table-sm mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width:140px;">產品編號</th>
-                        <th>產品名稱</th>
-                        <th style="width:80px;">數量</th>
-                        <th style="width:110px;">單價</th>
-                        <th style="width:110px;">小計</th>
-                        <th style="width:60px;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var (item, index) in _details.Select((x, i) => (x, i)))
-                    {
-                        <tr>
-                            <td>
-                                <input class="form-control form-control-sm"
-                                       @bind="item.ProductNo"
-                                       @bind:event="oninput" />
-                            </td>
-                            <td>
-                                <input class="form-control form-control-sm"
-                                       @bind="item.ProductChtName" />
-                            </td>
-                            <td>
-                                <input type="number" class="form-control form-control-sm text-end"
-                                       min="0"
-                                       @bind="item.Qty"
-                                       @bind:event="oninput"
-                                       @onchange="RecalcTax" />
-                            </td>
-                            <td>
-                                <input type="number" class="form-control form-control-sm text-end"
-                                       min="0" step="0.01"
-                                       @bind="item.ItemPrice"
-                                       @bind:event="oninput"
-                                       @onchange="RecalcTax" />
-                            </td>
-                            <td class="text-end align-middle">
-                                @(((item.ItemPrice ?? 0) * (item.Qty ?? 0)).ToString("N2"))
-                            </td>
-                            <td class="text-center align-middle">
-                                <button class="btn btn-outline-danger btn-sm"
-                                        @onclick="() => RemoveDetailRow(index)">x</button>
-                            </td>
-                        </tr>
-                    }
-                    @if (_details.Count == 0)
-                    {
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-3">尚無明細，請點擊「新增明細」</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <DxGrid Data="@_details" ShowFilterRow="false" PagerVisible="false">
+                <Columns>
+                    <DxGridDataColumn FieldName="ProductNo" Caption="產品編號" Width="140px">
+                        <CellDisplayTemplate>
+                            @{ var item = (CreatePurchaseItemDto)context.DataItem; }
+                            <input class="form-control form-control-sm" @bind="item.ProductNo" @bind:event="oninput" />
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="ProductChtName" Caption="產品名稱">
+                        <CellDisplayTemplate>
+                            @{ var item = (CreatePurchaseItemDto)context.DataItem; }
+                            <input class="form-control form-control-sm" @bind="item.ProductChtName" />
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="Qty" Caption="數量" Width="90px">
+                        <CellDisplayTemplate>
+                            @{ var item = (CreatePurchaseItemDto)context.DataItem; }
+                            <input type="number" class="form-control form-control-sm text-end" min="0"
+                                   @bind="item.Qty" @bind:event="oninput" @onchange="RecalcTax" />
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="ItemPrice" Caption="單價" Width="110px">
+                        <CellDisplayTemplate>
+                            @{ var item = (CreatePurchaseItemDto)context.DataItem; }
+                            <input type="number" class="form-control form-control-sm text-end" min="0" step="0.01"
+                                   @bind="item.ItemPrice" @bind:event="oninput" @onchange="RecalcTax" />
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn FieldName="ProductNo" Caption="小計" Width="110px">
+                        <CellDisplayTemplate>
+                            @{ var item = (CreatePurchaseItemDto)context.DataItem; }
+                            <span class="float-end">@(((item.ItemPrice ?? 0) * (item.Qty ?? 0)).ToString("N2"))</span>
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridCommandColumn Width="60px">
+                        <CellDisplayTemplate>
+                            @{
+                                var item = (CreatePurchaseItemDto)context.DataItem;
+                                var idx = _details.IndexOf(item);
+                            }
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveDetailRow(idx)">x</button>
+                        </CellDisplayTemplate>
+                    </DxGridCommandColumn>
+                </Columns>
+            </DxGrid>
+            @if (_details.Count == 0)
+            {
+                <p class="text-center text-muted py-3 mb-0">尚無明細，請點擊「新增明細」</p>
+            }
         </div>
     </div>
 
@@ -174,6 +159,25 @@ else
     private decimal _subTotal;
     private decimal _taxRate;
     private decimal _taxAmount;
+
+    private record KeyValueOption(string Label, string Value);
+
+    private readonly List<KeyValueOption> _taxTypeOptions = new()
+    {
+        new("無稅", "0"),
+        new("內含稅", "1"),
+        new("外加稅", "2"),
+    };
+
+    private readonly List<KeyValueOption> _invoiceTypeOptions = new()
+    {
+        new("無", "0"),
+        new("二聯式", "2"),
+        new("三聯式", "3"),
+    };
+
+    private KeyValueOption _taxTypeOption => _taxTypeOptions.FirstOrDefault(o => o.Value == _taxTypeStr) ?? _taxTypeOptions[0];
+    private KeyValueOption _invoiceTypeOption => _invoiceTypeOptions.FirstOrDefault(o => o.Value == _invoiceTypeStr) ?? _invoiceTypeOptions[0];
 
     protected override async Task OnInitializedAsync()
     {
@@ -223,15 +227,31 @@ else
         _loading = false;
     }
 
-    private async Task OnSupplierIdChanged(ChangeEventArgs e)
+    private async Task LookupSupplier()
     {
-        var id = e.Value?.ToString();
         _supplierName = null;
-        if (!string.IsNullOrWhiteSpace(id))
+        if (!string.IsNullOrWhiteSpace(_dto.SupplierId))
         {
-            var supplier = await SupplierService.GetByIdAsync(id.Trim());
+            var supplier = await SupplierService.GetByIdAsync(_dto.SupplierId.Trim());
             _supplierName = supplier?.SupplierShortName;
         }
+    }
+
+    private void OnTaxTypeOptionChanged(KeyValueOption opt)
+    {
+        _taxTypeStr = opt?.Value ?? "0";
+        RecalcTax();
+    }
+
+    private void OnInvoiceTypeOptionChanged(KeyValueOption opt)
+    {
+        _invoiceTypeStr = opt?.Value ?? "0";
+    }
+
+    private void OnTaxTypeChanged(string value)
+    {
+        _taxTypeStr = value ?? "0";
+        RecalcTax();
     }
 
     private void AddDetailRow()
@@ -256,10 +276,10 @@ else
         var taxType = int.TryParse(_taxTypeStr, out var tv) ? (TaxType)tv : TaxType.None;
         (_taxRate, _taxAmount) = taxType switch
         {
-            TaxType.None => (0m, 0m),
+            TaxType.None    => (0m, 0m),
             TaxType.Include => (0.05m, _subTotal - _subTotal / 1.05m),
             TaxType.Exclude => (0.05m, _subTotal * 0.05m),
-            _ => (0m, 0m)
+            _               => (0m, 0m)
         };
     }
 

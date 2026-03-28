@@ -20,64 +20,48 @@ else
         <div class="alert alert-danger">@_errorMessage</div>
     }
 
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">供應商簡稱</label>
-                            <input class="form-control" @bind="_dto.SupplierShortName" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">供應商全名</label>
-                            <input class="form-control" @bind="_dto.SupplierFullName" />
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">抬頭</label>
-                            <input class="form-control" @bind="_dto.UniteTitle" />
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">供應商類型</label>
-                            <input class="form-control" @bind="_dto.SupplierType" />
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">稅別</label>
-                            <input class="form-control" @bind="_dto.TaxType" />
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">電話</label>
-                            <input class="form-control" @bind="_dto.Tel1" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">傳真</label>
-                            <input class="form-control" @bind="_dto.Fax" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Email</label>
-                            <input class="form-control" @bind="_dto.Email" />
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">聯絡窗口</label>
-                            <input class="form-control" @bind="_dto.ContactWindow" />
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">登記地址</label>
-                        <input class="form-control" @bind="_dto.RegisterAddress" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">備註</label>
-                        <textarea class="form-control" rows="3" @bind="_dto.Note"></textarea>
-                    </div>
-                </div>
-            </div>
+    <div class="card">
+        <div class="card-body">
+            <DxFormLayout>
+                <DxFormLayoutItem Caption="供應商簡稱" ColSpanMd="6">
+                    <DxTextBox @bind-Text="@_dto.SupplierShortName" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="供應商全名" ColSpanMd="6">
+                    <DxTextBox @bind-Text="@_dto.SupplierFullName" />
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="抬頭" ColSpanMd="6">
+                    <DxTextBox @bind-Text="@_dto.UniteTitle" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="供應商類型" ColSpanMd="3">
+                    <DxTextBox @bind-Text="@_dto.SupplierType" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="稅別" ColSpanMd="3">
+                    <DxTextBox @bind-Text="@_dto.TaxType" />
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="電話" ColSpanMd="4">
+                    <DxTextBox @bind-Text="@_dto.Tel1" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="傳真" ColSpanMd="4">
+                    <DxTextBox @bind-Text="@_dto.Fax" />
+                </DxFormLayoutItem>
+                <DxFormLayoutItem Caption="Email" ColSpanMd="4">
+                    <DxTextBox @bind-Text="@_dto.Email" />
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="聯絡窗口" ColSpanMd="6">
+                    <DxTextBox @bind-Text="@_dto.ContactWindow" />
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="登記地址" ColSpanMd="12">
+                    <DxTextBox @bind-Text="@_dto.RegisterAddress" />
+                </DxFormLayoutItem>
+
+                <DxFormLayoutItem Caption="備註" ColSpanMd="12">
+                    <DxMemo @bind-Text="@_dto.Note" Rows="3" />
+                </DxFormLayoutItem>
+            </DxFormLayout>
         </div>
     </div>
 

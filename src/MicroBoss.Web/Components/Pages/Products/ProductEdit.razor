@@ -25,56 +25,46 @@ else
             <div class="card mb-3">
                 <div class="card-header">基本資料</div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">產品代碼</label>
-                        <input class="form-control" @bind="_dto.ProductId" readonly="@(!_isNew)" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">產品編號</label>
-                        <input class="form-control" @bind="_dto.ProductNo" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">產品類別</label>
-                        <select class="form-select" @bind="_productClassStr">
-                            <option value="">請選擇</option>
-                            <option value="0">存貨 (Stock)</option>
-                            <option value="1">非存貨 (Non-Stock)</option>
-                            <option value="2">服務 (Service)</option>
-                            <option value="3">工時 (Labor)</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">主分類</label>
-                        <input class="form-control" @bind="_dto.MainCategory" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">子分類</label>
-                        <input class="form-control" @bind="_dto.SubCategory" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">產品名稱</label>
-                        <input class="form-control" @bind="_dto.ProductName" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">產品名稱 (副)</label>
-                        <input class="form-control" @bind="_dto.ProductNameExt" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">基本單位</label>
-                        <input class="form-control" @bind="_dto.BaseUnit" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">條碼</label>
-                        <input class="form-control" @bind="_dto.BaseBarcode" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">製造商</label>
-                        <input class="form-control" @bind="_dto.Manufacturer" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">預設庫位</label>
-                        <input class="form-control" @bind="_dto.DefaultStockNo" />
-                    </div>
+                    <DxFormLayout>
+                        <DxFormLayoutItem Caption="產品代碼" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.ProductId" ReadOnly="@(!_isNew)" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="產品編號" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.ProductNo" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="產品類別" ColSpanMd="12">
+                            <DxComboBox Data="@_productClassOptions"
+                                        TextFieldName="Label"
+                                        ValueFieldName="Value"
+                                        @bind-Value="@_productClassStr"
+                                        ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                        NullText="請選擇" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="主分類" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.MainCategory" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="子分類" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.SubCategory" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="產品名稱" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.ProductName" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="產品名稱 (副)" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.ProductNameExt" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="基本單位" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.BaseUnit" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="條碼" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.BaseBarcode" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="製造商" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.Manufacturer" />
+                        </DxFormLayoutItem>
+                        <DxFormLayoutItem Caption="預設庫位" ColSpanMd="12">
+                            <DxTextBox @bind-Text="@_dto.DefaultStockNo" />
+                        </DxFormLayoutItem>
+                    </DxFormLayout>
                 </div>
             </div>
         </div>
@@ -160,7 +150,15 @@ else
     private string _errorMessage = "";
     private ProductDto? _product;
     private CreateProductDto _dto = new();
-    private string _productClassStr = "";
+    private string? _productClassStr;
+
+    private readonly List<(string Label, string Value)> _productClassOptions = new()
+    {
+        ("存貨 (Stock)", "0"),
+        ("非存貨 (Non-Stock)", "1"),
+        ("服務 (Service)", "2"),
+        ("工時 (Labor)", "3")
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,7 +183,7 @@ else
                 };
                 _productClassStr = _product.ProductClass.HasValue
                     ? ((int)_product.ProductClass.Value).ToString()
-                    : "";
+                    : null;
             }
         }
         _loading = false;

@@ -11,16 +11,16 @@
 
 <div class="row mb-3 g-2 align-items-end">
     <div class="col-auto">
-        <input class="form-control" placeholder="搜尋產品編號/名稱..." @bind="_keyword" @bind:event="oninput" @onkeyup="HandleKeyUp" />
+        <DxTextBox Text="@_keyword"
+                   NullText="搜尋產品編號/名稱..."
+                   TextChanged="@OnKeywordChanged" />
     </div>
     <div class="col-auto">
-        <select class="form-select" @bind="_stockNo">
-            <option value="">全部倉庫</option>
-            @foreach (var sn in _stockNos)
-            {
-                <option value="@sn">@sn</option>
-            }
-        </select>
+        <DxComboBox Data="@_stockNoOptions"
+                    TextFieldName="@nameof(StockNoOption.Label)"
+                    ValueFieldName="@nameof(StockNoOption.Value)"
+                    @bind-Value="@_stockNo"
+                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" />
     </div>
     <div class="col-auto">
         <button class="btn btn-primary btn-sm" @onclick="Search">搜尋</button>
@@ -40,94 +40,103 @@ else if (_result == null || _result.Items.Count == 0)
 }
 else
 {
-    <table class="table table-sm table-bordered">
-        <thead class="table-light">
-            <tr>
-                <th>產品編號</th>
-                <th>產品名稱</th>
-                <th>製造商</th>
-                <th>倉庫</th>
-                <th>庫存量</th>
-                <th>安全量</th>
-                <th>儲位</th>
-                <th>在途量</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in _result.Items)
-            {
-                var isUnderSafe = item.CurrentStockQty < item.SafeQty;
-                var rowClass = isUnderSafe ? "table-danger" : "";
-                var editKey = $"{item.ProductId}_{item.StockNo}";
-                var isEditing = _editingRows.Contains(editKey);
-
-                <tr class="@rowClass">
-                    <td>@item.ProductNo</td>
-                    <td>
-                        @item.ProductName
-                        @if (isUnderSafe)
-                        {
-                            <span class="badge bg-danger ms-1" title="低於安全庫存">!</span>
-                        }
-                    </td>
-                    <td>@item.Manufacturer</td>
-                    <td>@item.StockNo</td>
-                    <td>
-                        @if (isEditing)
-                        {
-                            <input type="number" class="form-control form-control-sm" style="width:80px"
-                                   @bind="_editQty" />
-                        }
-                        else
-                        {
-                            @item.CurrentStockQty
-                        }
-                    </td>
-                    <td>
-                        @if (isEditing)
-                        {
-                            <input type="number" class="form-control form-control-sm" style="width:80px"
-                                   @bind="_editSafeQty" />
-                        }
-                        else
-                        {
-                            @item.SafeQty
-                        }
-                    </td>
-                    <td>
-                        @if (isEditing)
-                        {
-                            <input type="text" class="form-control form-control-sm" style="width:120px"
-                                   @bind="_editLocation" />
-                        }
-                        else
-                        {
-                            @item.Location
-                        }
-                    </td>
-                    <td>@item.TransitQty</td>
-                    <td>
-                        @if (isEditing)
-                        {
-                            <button class="btn btn-success btn-sm me-1" @onclick="() => SaveRow(item)">儲存</button>
-                            <button class="btn btn-secondary btn-sm" @onclick="() => CancelEdit(editKey)">取消</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-outline-primary btn-sm" @onclick="() => StartEdit(item, editKey)">編輯</button>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    <div class="d-flex align-items-center gap-2">
-        <span class="text-muted small">共 @_result.TotalCount 筆，第 @_result.Page / @_result.TotalPages 頁</span>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page <= 1)" @onclick="PrevPage">上一頁</button>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page >= _result.TotalPages)" @onclick="NextPage">下一頁</button>
-    </div>
+    <DxGrid Data="@_result.Items"
+            ShowFilterRow="true"
+            PageSize="20"
+            PagerVisible="true"
+            CustomizeElement="OnCustomizeElement">
+        <Columns>
+            <DxGridDataColumn FieldName="ProductNo" Caption="產品編號" />
+            <DxGridDataColumn FieldName="ProductName" Caption="產品名稱">
+                <CellDisplayTemplate>
+                    @{
+                        var item = (InventoryDto)context.DataItem;
+                        var isUnderSafe = item.CurrentStockQty < item.SafeQty;
+                    }
+                    @item.ProductName
+                    @if (isUnderSafe)
+                    {
+                        <span class="badge bg-danger ms-1" title="低於安全庫存">!</span>
+                    }
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="Manufacturer" Caption="製造商" />
+            <DxGridDataColumn FieldName="StockNo" Caption="倉庫" />
+            <DxGridDataColumn FieldName="CurrentStockQty" Caption="庫存量" Width="90px">
+                <CellDisplayTemplate>
+                    @{
+                        var item = (InventoryDto)context.DataItem;
+                        var editKey = $"{item.ProductId}_{item.StockNo}";
+                        var isEditing = _editingRows.Contains(editKey);
+                    }
+                    @if (isEditing)
+                    {
+                        <input type="number" class="form-control form-control-sm" style="width:80px"
+                               @bind="_editQty" />
+                    }
+                    else
+                    {
+                        @item.CurrentStockQty
+                    }
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="SafeQty" Caption="安全量" Width="90px">
+                <CellDisplayTemplate>
+                    @{
+                        var item = (InventoryDto)context.DataItem;
+                        var editKey = $"{item.ProductId}_{item.StockNo}";
+                        var isEditing = _editingRows.Contains(editKey);
+                    }
+                    @if (isEditing)
+                    {
+                        <input type="number" class="form-control form-control-sm" style="width:80px"
+                               @bind="_editSafeQty" />
+                    }
+                    else
+                    {
+                        @item.SafeQty
+                    }
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="Location" Caption="儲位" Width="120px">
+                <CellDisplayTemplate>
+                    @{
+                        var item = (InventoryDto)context.DataItem;
+                        var editKey = $"{item.ProductId}_{item.StockNo}";
+                        var isEditing = _editingRows.Contains(editKey);
+                    }
+                    @if (isEditing)
+                    {
+                        <input type="text" class="form-control form-control-sm" style="width:120px"
+                               @bind="_editLocation" />
+                    }
+                    else
+                    {
+                        @item.Location
+                    }
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="TransitQty" Caption="在途量" Width="80px" />
+            <DxGridCommandColumn Width="150px">
+                <CellDisplayTemplate>
+                    @{
+                        var item = (InventoryDto)context.DataItem;
+                        var editKey = $"{item.ProductId}_{item.StockNo}";
+                        var isEditing = _editingRows.Contains(editKey);
+                    }
+                    @if (isEditing)
+                    {
+                        <button class="btn btn-success btn-sm me-1" @onclick="() => SaveRow(item)">儲存</button>
+                        <button class="btn btn-secondary btn-sm" @onclick="() => CancelEdit(editKey)">取消</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-primary btn-sm" @onclick="() => StartEdit(item, editKey)">編輯</button>
+                    }
+                </CellDisplayTemplate>
+            </DxGridCommandColumn>
+        </Columns>
+    </DxGrid>
 }
 
 @if (!string.IsNullOrEmpty(_statusMessage))
@@ -144,11 +153,11 @@ else
     private PagedResult<InventoryDto>? _result;
     private bool _loading = true;
     private string _keyword = "";
-    private string _stockNo = "";
+    private string? _stockNo;
     private int _page = 1;
     private const int PageSize = 20;
 
-    private List<string> _stockNos = new();
+    private List<StockNoOption> _stockNoOptions = new();
     private HashSet<string> _editingRows = new();
 
     // Inline edit state (single row at a time)
@@ -160,6 +169,8 @@ else
     private string? _statusMessage;
     private bool _statusIsError;
 
+    private record StockNoOption(string Label, string? Value);
+
     protected override async Task OnInitializedAsync()
     {
         await LoadStockNosAsync();
@@ -168,9 +179,11 @@ else
 
     private async Task LoadStockNosAsync()
     {
-        // Load all distinct StockNos for the dropdown via a broad query
         var all = await InventoryService.QueryAsync(new InventoryQueryDto { Page = 1, PageSize = 1000 });
-        _stockNos = all.Items.Select(i => i.StockNo ?? "").Where(s => !string.IsNullOrEmpty(s)).Distinct().OrderBy(s => s).ToList();
+        var stockNos = all.Items.Select(i => i.StockNo ?? "").Where(s => !string.IsNullOrEmpty(s)).Distinct().OrderBy(s => s).ToList();
+        _stockNoOptions = new List<StockNoOption> { new("全部倉庫", null) }
+            .Concat(stockNos.Select(s => new StockNoOption(s, s)))
+            .ToList();
     }
 
     private async Task LoadAsync()
@@ -195,24 +208,24 @@ else
         await LoadAsync();
     }
 
-    private async Task HandleKeyUp(KeyboardEventArgs e)
+    private async Task OnKeywordChanged(string? value)
     {
-        if (e.Key == "Enter") await Search();
+        _keyword = value ?? "";
+        await Task.CompletedTask;
     }
 
-    private async Task PrevPage()
+    private void OnCustomizeElement(GridCustomizeElementEventArgs e)
     {
-        if (_page > 1) { _page--; await LoadAsync(); }
-    }
-
-    private async Task NextPage()
-    {
-        if (_result != null && _page < _result.TotalPages) { _page++; await LoadAsync(); }
+        if (e.ElementType == GridElementType.DataRow)
+        {
+            var item = (InventoryDto)e.Grid.GetDataItem(e.VisibleIndex);
+            if (item.CurrentStockQty < item.SafeQty)
+                e.CssClass = "table-danger";
+        }
     }
 
     private void StartEdit(InventoryDto item, string editKey)
     {
-        // Cancel previous edit if any
         if (_currentEditKey != null)
             _editingRows.Remove(_currentEditKey);
 

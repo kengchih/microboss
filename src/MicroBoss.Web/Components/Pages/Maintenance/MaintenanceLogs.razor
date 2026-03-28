@@ -19,35 +19,35 @@ else if (_logs == null || _logs.Count == 0)
 }
 else
 {
-    <table class="table table-sm table-striped table-bordered">
-        <thead class="table-light">
-            <tr>
-                <th>記錄時間</th>
-                <th>動作類型</th>
-                <th>產品編號</th>
-                <th>條碼</th>
-                <th>數量</th>
-                <th>操作員</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var log in _logs)
-            {
-                <tr>
-                    <td>@log.LogTime.ToString("yyyy-MM-dd HH:mm")</td>
-                    <td>@GetLogTypeLabel(log.LogType)</td>
-                    <td>@log.ProductNo</td>
-                    <td>@log.Barcode</td>
-                    <td>@log.Qty</td>
-                    <td>@log.OperatorId</td>
-                    <td>
-                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteLog(log.PartLogId)">刪除</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <DxGrid Data="@_logs"
+            ShowFilterRow="true"
+            PageSize="20"
+            PagerVisible="true">
+        <Columns>
+            <DxGridDataColumn FieldName="LogTime" Caption="記錄時間" DisplayFormat="yyyy-MM-dd HH:mm" />
+            <DxGridDataColumn FieldName="LogType" Caption="動作類型">
+                <CellDisplayTemplate>
+                    @{
+                        var log = (MaintenanceLogDto)context.DataItem;
+                    }
+                    @GetLogTypeLabel(log.LogType)
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="ProductNo" Caption="產品編號" />
+            <DxGridDataColumn FieldName="Barcode" Caption="條碼" />
+            <DxGridDataColumn FieldName="Qty" Caption="數量" />
+            <DxGridDataColumn FieldName="OperatorId" Caption="操作員" />
+            <DxGridCommandColumn Width="100px">
+                <CellDisplayTemplate>
+                    @{
+                        var log = (MaintenanceLogDto)context.DataItem;
+                    }
+                    <button class="btn btn-outline-danger btn-sm"
+                            @onclick="() => DeleteLog(log.PartLogId)">刪除</button>
+                </CellDisplayTemplate>
+            </DxGridCommandColumn>
+        </Columns>
+    </DxGrid>
 }
 
 @if (!string.IsNullOrEmpty(_statusMessage))

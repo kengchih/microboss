@@ -11,14 +11,16 @@
 
 <div class="mb-3">
     <label class="form-label">貼上資料（Tab 分隔）</label>
-    <textarea class="form-control font-monospace" rows="10" @bind="_rawData"
-              placeholder="PN&#9;PG&#9;Class&#9;TWD&#9;ENDesc&#9;CNDesc&#9;Successor"></textarea>
+    <DxMemo @bind-Text="@_rawData"
+            Rows="10"
+            CssClass="font-monospace"
+            NullText="PN&#9;PG&#9;Class&#9;TWD&#9;ENDesc&#9;CNDesc&#9;Successor" />
 </div>
 
 <div class="mb-3 d-flex gap-2">
-    <button class="btn btn-outline-secondary" @onclick="ParseData" disabled="@_busy">解析預覽</button>
-    <button class="btn btn-primary" @onclick="Import" disabled="@(_busy || _preview.Count == 0)">匯入</button>
-    <button class="btn btn-danger" @onclick="ConfirmReset" disabled="@_busy">清除全部資料</button>
+    <DxButton Text="解析預覽" RenderStyle="ButtonRenderStyle.Secondary" Enabled="@(!_busy)" Click="@ParseData" />
+    <DxButton Text="匯入" RenderStyle="ButtonRenderStyle.Primary" Enabled="@(!_busy && _preview.Count > 0)" Click="@Import" />
+    <DxButton Text="清除全部資料" RenderStyle="ButtonRenderStyle.Danger" Enabled="@(!_busy)" Click="@ConfirmReset" />
 </div>
 
 @if (!string.IsNullOrEmpty(_message))
@@ -32,57 +34,29 @@
 @if (_preview.Count > 0)
 {
     <h6>預覽（共 @_preview.Count 筆）</h6>
-    <div style="max-height:400px;overflow-y:auto;">
-        <table class="table table-sm table-bordered table-hover">
-            <thead class="table-light sticky-top">
-                <tr>
-                    <th>PN</th>
-                    <th>PG</th>
-                    <th>Class</th>
-                    <th>TWD</th>
-                    <th>ENDesc</th>
-                    <th>CNDesc</th>
-                    <th>Successor</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in _preview)
-                {
-                    <tr>
-                        <td>@item.PN</td>
-                        <td>@item.PG</td>
-                        <td>@item.Class</td>
-                        <td>@item.TWD</td>
-                        <td>@item.ENDesc</td>
-                        <td>@item.CNDesc</td>
-                        <td>@item.Successor</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <DxGrid Data="@_preview" ShowFilterRow="false" PageSize="50">
+        <Columns>
+            <DxGridDataColumn FieldName="@nameof(SpSourceDataDto.PN)" Caption="PN" />
+            <DxGridDataColumn FieldName="@nameof(SpSourceDataDto.PG)" Caption="PG" />
+            <DxGridDataColumn FieldName="@nameof(SpSourceDataDto.Class)" Caption="Class" />
+            <DxGridDataColumn FieldName="@nameof(SpSourceDataDto.TWD)" Caption="TWD" />
+            <DxGridDataColumn FieldName="@nameof(SpSourceDataDto.ENDesc)" Caption="ENDesc" />
+            <DxGridDataColumn FieldName="@nameof(SpSourceDataDto.CNDesc)" Caption="CNDesc" />
+            <DxGridDataColumn FieldName="@nameof(SpSourceDataDto.Successor)" Caption="Successor" />
+        </Columns>
+    </DxGrid>
 }
 
-@if (_showConfirmReset)
-{
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">確認清除</h5>
-                    <button type="button" class="btn-close" @onclick="CancelReset"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-danger">確定要清除所有 Bosch 零件資料嗎？此操作無法復原。</p>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CancelReset">取消</button>
-                    <button class="btn btn-danger" @onclick="DoReset">確認清除</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<!-- Confirm Reset Popup -->
+<DxPopup @bind-Visible="@_showConfirmReset" HeaderText="確認清除" Width="420px">
+    <BodyContentTemplate>
+        <p class="text-danger">確定要清除所有 Bosch 零件資料嗎？此操作無法復原。</p>
+    </BodyContentTemplate>
+    <FooterContentTemplate>
+        <DxButton Text="取消" RenderStyle="ButtonRenderStyle.Secondary" Click="@CancelReset" />
+        <DxButton Text="確認清除" RenderStyle="ButtonRenderStyle.Danger" Click="@DoReset" />
+    </FooterContentTemplate>
+</DxPopup>
 
 @code {
     [Inject] private IBoschImportService BoschImportService { get; set; } = default!;

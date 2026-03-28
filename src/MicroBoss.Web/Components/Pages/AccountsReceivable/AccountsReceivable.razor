@@ -13,26 +13,25 @@
 <div class="row mb-3 g-2 align-items-end">
     <div class="col-md-2">
         <label class="form-label mb-1">客戶編號</label>
-        <input class="form-control" placeholder="客戶編號" @bind="_customerId" />
+        <DxTextBox @bind-Text="@_customerId" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto" NullText="客戶編號" />
     </div>
     <div class="col-md-2">
         <label class="form-label mb-1">狀態</label>
-        <select class="form-select" @bind="_statusFilter">
-            <option value="">全部</option>
-            <option value="0">未結帳</option>
-            <option value="1">已結帳</option>
-        </select>
+        <DxComboBox Data="@_statusOptions" @bind-Value="@_statusFilter"
+                    TextFieldName="@nameof(StatusOption.Label)"
+                    ValueFieldName="@nameof(StatusOption.Value)"
+                    NullText="全部" />
     </div>
     <div class="col-md-2">
         <label class="form-label mb-1">年度</label>
-        <input type="number" class="form-control" placeholder="年度 (e.g. 2025)" @bind="_year" />
+        <DxSpinEdit @bind-Value="@_year" NullText="年度" MinValue="2000" MaxValue="2099" />
     </div>
     <div class="col-md-2">
         <label class="form-label mb-1">月份</label>
-        <input type="number" class="form-control" placeholder="月份 (1-12)" @bind="_month" min="1" max="12" />
+        <DxSpinEdit @bind-Value="@_month" NullText="月份" MinValue="1" MaxValue="12" />
     </div>
     <div class="col-md-4 text-end">
-        <button class="btn btn-outline-secondary me-2" @onclick="Search">搜尋</button>
+        <DxButton Text="搜尋" RenderStyle="ButtonRenderStyle.Secondary" Click="@Search" />
     </div>
 </div>
 
@@ -42,55 +41,47 @@
 }
 else
 {
-    <table class="table table-striped table-sm table-hover">
-        <thead>
-            <tr>
-                <th>單號</th>
-                <th>結帳日期</th>
-                <th>客戶編號</th>
-                <th class="text-end">應收金額</th>
-                <th class="text-end">實收金額</th>
-                <th class="text-end">差額</th>
-                <th>狀態</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var ar in _result.Items)
-            {
-                <tr style="cursor:pointer;" @onclick="() => NavigateToEdit(ar.Id)">
-                    <td>@ar.Number</td>
-                    <td>@ar.SettleDate.ToString("yyyy/MM/dd")</td>
-                    <td>@ar.CustomerId</td>
-                    <td class="text-end">@ar.TotalAmount.ToString("N2")</td>
-                    <td class="text-end">@ar.ActualAmount.ToString("N2")</td>
-                    <td class="text-end">@((ar.TotalAmount - ar.ActualAmount).ToString("N2"))</td>
-                    <td>
-                        <span class="badge @(ar.Status == AccountsReceivableStatus.Paid ? "bg-success" : "bg-warning text-dark")">
-                            @GetStatusText(ar.Status)
-                        </span>
-                    </td>
-                </tr>
-            }
-            @if (_result.Items.Count == 0)
-            {
-                <tr>
-                    <td colspan="7" class="text-center text-muted">無資料</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <DxGrid Data="@_result.Items"
+            ShowFilterRow="true"
+            PageSize="@_pageSize">
+        <Columns>
+            <DxGridDataColumn FieldName="@nameof(AccountsReceivableDto.Number)" Caption="單號" />
+            <DxGridDataColumn FieldName="@nameof(AccountsReceivableDto.SettleDate)" Caption="結帳日期" DisplayFormat="yyyy/MM/dd" />
+            <DxGridDataColumn FieldName="@nameof(AccountsReceivableDto.CustomerId)" Caption="客戶編號" />
+            <DxGridDataColumn FieldName="@nameof(AccountsReceivableDto.TotalAmount)" Caption="應收金額" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" />
+            <DxGridDataColumn FieldName="@nameof(AccountsReceivableDto.ActualAmount)" Caption="實收金額" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" />
+            <DxGridDataColumn Caption="差額" Alignment="HorizontalAlignment.Right">
+                <CellDisplayTemplate>
+                    @{ var ar = (AccountsReceivableDto)context.DataItem; }
+                    @((ar.TotalAmount - ar.ActualAmount).ToString("N2"))
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="@nameof(AccountsReceivableDto.Status)" Caption="狀態">
+                <CellDisplayTemplate>
+                    @{ var ar = (AccountsReceivableDto)context.DataItem; }
+                    <span class="badge @(ar.Status == AccountsReceivableStatus.Paid ? "bg-success" : "bg-warning text-dark")">
+                        @GetStatusText(ar.Status)
+                    </span>
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn Caption="" Width="80px">
+                <CellDisplayTemplate>
+                    @{ var ar = (AccountsReceivableDto)context.DataItem; }
+                    <DxButton Text="詳細" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => NavigateToEdit(ar.Id))" />
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+        </Columns>
+    </DxGrid>
 
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-3 mt-2">
         <span>共 @_result.TotalCount 筆，第 @_result.Page / @_result.TotalPages 頁</span>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page <= 1)"
-                @onclick="PreviousPage">上一頁</button>
-        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page >= _result.TotalPages)"
-                @onclick="NextPage">下一頁</button>
-        <select class="form-select form-select-sm w-auto" @bind="_pageSize" @bind:after="Search">
-            <option value="10">10 筆/頁</option>
-            <option value="20">20 筆/頁</option>
-            <option value="50">50 筆/頁</option>
-        </select>
+        <DxButton Text="上一頁" RenderStyle="ButtonRenderStyle.Secondary"
+                  Enabled="@(_result.Page > 1)" Click="@PreviousPage" />
+        <DxButton Text="下一頁" RenderStyle="ButtonRenderStyle.Secondary"
+                  Enabled="@(_result.Page < _result.TotalPages)" Click="@NextPage" />
+        <DxComboBox T="int" Data="@_pageSizeOptions"
+                    Value="@_pageSize"
+                    ValueChanged="@(async (int v) => await OnPageSizeChanged(v))" />
     </div>
 }
 
@@ -100,11 +91,21 @@ else
 
     private PagedResult<AccountsReceivableDto>? _result;
     private string? _customerId;
-    private string _statusFilter = "";
+    private string? _statusFilter;
     private int? _year;
     private int? _month;
     private int _page = 1;
     private int _pageSize = 20;
+
+    private record StatusOption(string? Value, string Label);
+    private static readonly List<StatusOption> _statusOptions =
+    [
+        new(null,  "全部"),
+        new("0",   "未結帳"),
+        new("1",   "已結帳"),
+    ];
+
+    private static readonly List<int> _pageSizeOptions = [10, 20, 50];
 
     protected override async Task OnInitializedAsync()
     {
@@ -150,6 +151,13 @@ else
             _page++;
             await LoadData();
         }
+    }
+
+    private async Task OnPageSizeChanged(int value)
+    {
+        _pageSize = value;
+        _page = 1;
+        await LoadData();
     }
 
     private void NavigateToEdit(int id) => Nav.NavigateTo($"/ar/{id}");

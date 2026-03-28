@@ -9,21 +9,20 @@
 
 <h4>輔助代碼管理</h4>
 
-<div class="row mb-3">
+<div class="row mb-3 align-items-end">
     <div class="col-auto">
         <label class="form-label fw-semibold">代碼群組</label>
-        <select class="form-select" @bind="_selectedGroup" @bind:after="LoadCodesAsync">
-            <option value="">-- 請選擇群組 --</option>
-            @foreach (var g in _groups)
-            {
-                <option value="@g.Value">@g.Label (@g.Value)</option>
-            }
-        </select>
+        <DxComboBox T="string?" Data="@_groups"
+                    Value="@_selectedGroup"
+                    TextFieldName="@nameof(GroupOption.Label)"
+                    ValueFieldName="@nameof(GroupOption.Value)"
+                    NullText="-- 請選擇群組 --"
+                    ValueChanged="@(async (string? v) => await OnGroupChanged(v))" />
     </div>
     @if (!string.IsNullOrEmpty(_selectedGroup))
     {
-        <div class="col-auto align-self-end">
-            <button class="btn btn-primary btn-sm" @onclick="ShowCreateForm">新增代碼</button>
+        <div class="col-auto">
+            <DxButton Text="新增代碼" RenderStyle="ButtonRenderStyle.Primary" Click="@ShowCreateForm" />
         </div>
     }
 </div>
@@ -48,82 +47,65 @@
     }
     else
     {
-        <table class="table table-striped table-sm">
-            <thead>
-                <tr>
-                    <th>代碼 ID</th>
-                    <th>代碼名稱</th>
-                    <th>排序</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in _codes)
-                {
-                    <tr>
-                        <td>@item.CodeId</td>
-                        <td>@item.CodeName</td>
-                        <td>@item.SortIndex</td>
-                        <td>
-                            <button class="btn btn-outline-primary btn-sm" @onclick="() => ShowEditForm(item)">編輯</button>
-                            <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteCode(item)">刪除</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <DxGrid Data="@_codes" ShowFilterRow="true" PageSize="30">
+            <Columns>
+                <DxGridDataColumn FieldName="@nameof(ComCodeDto.CodeId)" Caption="代碼 ID" />
+                <DxGridDataColumn FieldName="@nameof(ComCodeDto.CodeName)" Caption="代碼名稱" />
+                <DxGridDataColumn FieldName="@nameof(ComCodeDto.SortIndex)" Caption="排序" />
+                <DxGridDataColumn Caption="操作" Width="150px">
+                    <CellDisplayTemplate>
+                        @{ var item = (ComCodeDto)context.DataItem; }
+                        <DxButton Text="編輯" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => ShowEditForm(item))" />
+                        <DxButton Text="刪除" RenderStyle="ButtonRenderStyle.Danger" Click="@(() => DeleteCode(item))" />
+                    </CellDisplayTemplate>
+                </DxGridDataColumn>
+            </Columns>
+        </DxGrid>
     }
 }
 
-@if (_showForm)
-{
-    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(_isEditing ? "編輯代碼" : "新增代碼")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(_formError))
+<!-- Add/Edit Popup -->
+<DxPopup @bind-Visible="@_showForm" HeaderText="@(_isEditing ? "編輯代碼" : "新增代碼")" Width="450px">
+    <BodyContentTemplate Context="_popupContext">
+        @if (!string.IsNullOrEmpty(_formError))
+        {
+            <div class="alert alert-danger">@_formError</div>
+        }
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="群組 ID" ColSpanMd="12">
+                <Template Context="_">
+                    <DxTextBox Value="@_selectedGroup" ReadOnly="true" />
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="代碼 ID" ColSpanMd="12">
+                <Template Context="_">
+                    @if (_isEditing)
                     {
-                        <div class="alert alert-danger">@_formError</div>
-                    }
-                    <div class="mb-3">
-                        <label class="form-label">群組 ID</label>
-                        <input class="form-control" value="@_selectedGroup" disabled />
-                    </div>
-                    @if (!_isEditing)
-                    {
-                        <div class="mb-3">
-                            <label class="form-label">代碼 ID</label>
-                            <input class="form-control" @bind="_formCodeId" placeholder="例如: 001" />
-                        </div>
+                        <DxTextBox Value="@_formCodeId" ReadOnly="true" />
                     }
                     else
                     {
-                        <div class="mb-3">
-                            <label class="form-label">代碼 ID</label>
-                            <input class="form-control" value="@_formCodeId" disabled />
-                        </div>
+                        <DxTextBox @bind-Text="@_formCodeId" NullText="例如: 001" />
                     }
-                    <div class="mb-3">
-                        <label class="form-label">代碼名稱</label>
-                        <input class="form-control" @bind="_formCodeName" placeholder="代碼名稱" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">排序</label>
-                        <input type="number" class="form-control" @bind="_formSortIndex" />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CloseForm">取消</button>
-                    <button class="btn btn-primary" @onclick="SaveCode">儲存</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="代碼名稱" ColSpanMd="12">
+                <Template Context="_">
+                    <DxTextBox @bind-Text="@_formCodeName" NullText="代碼名稱" />
+                </Template>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="排序" ColSpanMd="12">
+                <Template Context="_">
+                    <DxSpinEdit @bind-Value="@_formSortIndex" />
+                </Template>
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </BodyContentTemplate>
+    <FooterContentTemplate Context="_popupFooter">
+        <DxButton Text="取消" RenderStyle="ButtonRenderStyle.Secondary" Click="@CloseForm" />
+        <DxButton Text="儲存" RenderStyle="ButtonRenderStyle.Primary" Click="@SaveCode" />
+    </FooterContentTemplate>
+</DxPopup>
 
 @code {
     [Inject] private IComCodeService ComCodeService { get; set; } = default!;
@@ -163,6 +145,12 @@
     private string _formCodeId = string.Empty;
     private string _formCodeName = string.Empty;
     private int? _formSortIndex;
+
+    private async Task OnGroupChanged(string? value)
+    {
+        _selectedGroup = value ?? string.Empty;
+        await LoadCodesAsync();
+    }
 
     private async Task LoadCodesAsync()
     {
