@@ -31,13 +31,18 @@ public static class IdentitySetup
             options.SlidingExpiration = true;
             options.Events.OnRedirectToLogin = context =>
             {
+                // API 回傳 401，Blazor 頁面不做 redirect（由 AuthorizeView 處理）
                 if (context.Request.Path.StartsWithSegments("/api"))
                 {
                     context.Response.StatusCode = 401;
                 }
-                else if (!context.Request.Path.StartsWithSegments("/login"))
+                return Task.CompletedTask;
+            };
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api"))
                 {
-                    context.Response.Redirect(context.RedirectUri);
+                    context.Response.StatusCode = 403;
                 }
                 return Task.CompletedTask;
             };
