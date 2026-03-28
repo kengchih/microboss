@@ -1,108 +1,568 @@
 @page "/pos"
+@layout MicroBoss.Web.Components.Layout.EmptyLayout
 @using MicroBoss.Application.Common
 @using MicroBoss.Application.DTOs
 @using MicroBoss.Application.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 @attribute [Authorize]
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>POS 銷售 - MicroBoss</PageTitle>
 
-<h4>POS 銷售</h4>
+<style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #0d1b2a; }
 
-<div class="row g-3 mb-3">
-    <div class="col-md-4">
-        <label class="form-label mb-1">客戶</label>
-        <DxComboBox T="string" Data="@_customers"
-                    @bind-Value="@_customerId"
-                    TextFieldName="@nameof(CustomerDto.CustomerName)"
-                    ValueFieldName="@nameof(CustomerDto.CustomerId)"
-                    NullText="-- 選擇客戶 --"
-                    ShowSearchBox="true" />
-    </div>
-    <div class="col-md-5">
-        <label class="form-label mb-1">產品編號 / 條碼</label>
-        <div class="input-group" @onkeydown="@OnProductSearchKeyDown">
-            <DxTextBox @bind-Text="@_productSearch"
-                       NullText="輸入產品編號或條碼後按 Enter" />
-            <DxButton Text="加入" RenderStyle="ButtonRenderStyle.Secondary" Click="@AddProduct" />
+    .pos-root {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 100vw;
+        font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        background: #0d1b2a;
+        color: #fff;
+        overflow: hidden;
+    }
+
+    /* TOP BAR */
+    .pos-topbar {
+        background: #1a237e;
+        color: #fff;
+        padding: 6px 16px;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        font-size: 0.95rem;
+        border-bottom: 2px solid #3949ab;
+        flex-shrink: 0;
+    }
+    .pos-topbar-item { display: flex; align-items: center; gap: 6px; }
+    .pos-topbar-label { color: #90caf9; font-size: 0.8rem; }
+    .pos-topbar-value { font-weight: 600; }
+    .pos-topbar-status-active { color: #a5d6a7; }
+    .pos-topbar-status-done { color: #ffcc80; }
+    .pos-topbar-spacer { flex: 1; }
+
+    /* MAIN BODY */
+    .pos-body {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        gap: 0;
+    }
+
+    /* LEFT PANEL */
+    .pos-left {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* BARCODE INPUT AREA */
+    .pos-barcode-area {
+        background: #283593;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        border-bottom: 1px solid #3949ab;
+    }
+    .pos-mode-label {
+        color: #ffcc80;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+        min-width: 160px;
+    }
+    .pos-barcode-input {
+        flex: 1;
+        background: #1a237e;
+        color: #fff;
+        border: 2px solid #5c6bc0;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 1.1rem;
+        outline: none;
+        min-width: 0;
+    }
+    .pos-barcode-input:focus { border-color: #90caf9; }
+    .pos-barcode-btn {
+        background: #3949ab;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-size: 1rem;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .pos-barcode-btn:hover { background: #5c6bc0; }
+
+    /* PRODUCT INFO DISPLAY */
+    .pos-product-info {
+        background: #1565c0;
+        padding: 8px 14px;
+        flex-shrink: 0;
+        border-bottom: 1px solid #1976d2;
+        min-height: 70px;
+    }
+    .pos-product-info-empty { color: #90caf9; font-size: 0.9rem; font-style: italic; }
+    .pos-product-found { color: #ffeb3b; }
+    .pos-product-notfound { color: #ef5350; }
+    .pos-product-name { font-size: 1.05rem; font-weight: 700; }
+    .pos-product-barcode { font-size: 0.85rem; color: #bbdefb; }
+    .pos-product-price { font-size: 0.95rem; }
+    .pos-product-subtotal { font-size: 1rem; font-weight: 700; }
+
+    /* CART GRID */
+    .pos-cart {
+        flex: 1;
+        overflow: auto;
+        background: #fff;
+        color: #333;
+    }
+    .pos-cart table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    .pos-cart thead th {
+        background: #e8eaf6;
+        color: #1a237e;
+        padding: 6px 10px;
+        text-align: left;
+        border-bottom: 2px solid #c5cae9;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        font-weight: 700;
+    }
+    .pos-cart thead th.num { text-align: center; width: 36px; }
+    .pos-cart thead th.qty { text-align: right; width: 56px; }
+    .pos-cart thead th.price { text-align: right; width: 80px; }
+    .pos-cart thead th.amount { text-align: right; width: 90px; }
+    .pos-cart tbody tr { cursor: pointer; }
+    .pos-cart tbody tr:nth-child(even) { background: #f5f5f5; }
+    .pos-cart tbody tr:hover { background: #e3f2fd; }
+    .pos-cart tbody tr.selected { background: #bbdefb !important; font-weight: 600; }
+    .pos-cart td {
+        padding: 5px 10px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .pos-cart td.num { text-align: center; color: #9e9e9e; font-size: 0.8rem; }
+    .pos-cart td.qty { text-align: right; }
+    .pos-cart td.price { text-align: right; }
+    .pos-cart td.amount { text-align: right; font-weight: 600; color: #1a237e; }
+
+    /* RIGHT PANEL */
+    .pos-right {
+        width: 280px;
+        flex-shrink: 0;
+        background: #1e2a3a;
+        display: flex;
+        flex-direction: column;
+        padding: 8px;
+        gap: 6px;
+        border-left: 2px solid #3949ab;
+        overflow-y: auto;
+    }
+
+    /* KEYPAD */
+    .pos-keypad {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 5px;
+    }
+    .pos-key {
+        background: #e0e0e0;
+        color: #333;
+        border: none;
+        border-radius: 5px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        min-height: 52px;
+        cursor: pointer;
+        transition: background 0.1s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pos-key:hover { background: #bdbdbd; }
+    .pos-key:active { background: #9e9e9e; }
+    .pos-key.key-action { background: #5c6bc0; color: #fff; font-size: 0.85rem; }
+    .pos-key.key-action:hover { background: #7986cb; }
+    .pos-key.key-clear { background: #ef9a9a; color: #333; }
+    .pos-key.key-clear:hover { background: #e57373; }
+    .pos-key.key-back { background: #ffe082; color: #333; }
+    .pos-key.key-back:hover { background: #ffd54f; }
+    .pos-key.key-enter { background: #a5d6a7; color: #333; }
+    .pos-key.key-enter:hover { background: #81c784; }
+
+    /* FUNCTION BUTTONS */
+    .pos-divider { border: none; border-top: 1px solid #3949ab; margin: 2px 0; }
+    .pos-fnrow {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+    }
+    .pos-fn {
+        border: none;
+        border-radius: 5px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        min-height: 46px;
+        cursor: pointer;
+        transition: background 0.1s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px;
+    }
+    .pos-fn:active { filter: brightness(0.85); }
+    .pos-fn.fn-new     { background: #43a047; color: #fff; }
+    .pos-fn.fn-new:hover { background: #388e3c; }
+    .pos-fn.fn-checkout { background: #e53935; color: #fff; }
+    .pos-fn.fn-checkout:hover { background: #c62828; }
+    .pos-fn.fn-blue    { background: #1e88e5; color: #fff; }
+    .pos-fn.fn-blue:hover { background: #1565c0; }
+    .pos-fn.fn-orange  { background: #fb8c00; color: #fff; }
+    .pos-fn.fn-orange:hover { background: #ef6c00; }
+    .pos-fn.fn-teal    { background: #00897b; color: #fff; }
+    .pos-fn.fn-teal:hover { background: #00695c; }
+    .pos-fn.fn-purple  { background: #8e24aa; color: #fff; }
+    .pos-fn.fn-purple:hover { background: #6a1b9a; }
+    .pos-fn.fn-grey    { background: #546e7a; color: #fff; }
+    .pos-fn.fn-grey:hover { background: #37474f; }
+    .pos-fn.fn-red     { background: #ef5350; color: #fff; }
+    .pos-fn.fn-red:hover { background: #c62828; }
+
+    /* BOTTOM BAR */
+    .pos-bottombar {
+        background: #1a237e;
+        color: #fff;
+        padding: 6px 16px;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        font-size: 0.95rem;
+        border-top: 2px solid #3949ab;
+        flex-shrink: 0;
+    }
+    .pos-bottom-item { display: flex; align-items: baseline; gap: 6px; }
+    .pos-bottom-label { color: #90caf9; font-size: 0.8rem; }
+    .pos-bottom-value { font-weight: 700; font-size: 1.1rem; color: #fff; }
+    .pos-bottom-value.big { font-size: 1.4rem; color: #ffeb3b; }
+    .pos-bottom-spacer { flex: 1; }
+
+    /* SUCCESS TOAST */
+    .pos-toast {
+        position: fixed;
+        top: 50px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1b5e20;
+        color: #fff;
+        padding: 12px 32px;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        z-index: 9999;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .pos-toast.error { background: #b71c1c; }
+
+    /* POPUP OVERLAY */
+    .pos-popup-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1000;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .pos-popup {
+        background: #1e2a3a;
+        border: 2px solid #3949ab;
+        border-radius: 8px;
+        padding: 24px;
+        min-width: 360px;
+        max-width: 500px;
+        color: #fff;
+    }
+    .pos-popup h5 { margin: 0 0 16px; color: #90caf9; font-size: 1.1rem; }
+    .pos-popup-input {
+        width: 100%;
+        background: #0d1b2a;
+        color: #fff;
+        border: 2px solid #5c6bc0;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 1rem;
+        margin-bottom: 12px;
+        box-sizing: border-box;
+    }
+    .pos-popup-input:focus { outline: none; border-color: #90caf9; }
+    .pos-popup-btns { display: flex; gap: 10px; justify-content: flex-end; }
+    .pos-popup-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #3949ab;
+        border-radius: 4px;
+        margin-bottom: 12px;
+    }
+    .pos-popup-list-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #283593;
+        font-size: 0.9rem;
+    }
+    .pos-popup-list-item:hover { background: #283593; }
+    .pos-popup-list-item.active { background: #1a237e; color: #ffeb3b; }
+</style>
+
+<div class="pos-root">
+
+    <!-- TOP BAR -->
+    <div class="pos-topbar">
+        <div class="pos-topbar-item">
+            <span class="pos-topbar-label">時間</span>
+            <span class="pos-topbar-value">@_currentTime</span>
         </div>
-        @if (!string.IsNullOrEmpty(_searchError))
+        <div class="pos-topbar-item">
+            <span class="pos-topbar-label">狀態</span>
+            <span class="pos-topbar-value @(_transactionDone ? "pos-topbar-status-done" : "pos-topbar-status-active")">
+                @(_transactionDone ? "交易完成" : "交易中")
+            </span>
+        </div>
+        <div class="pos-topbar-item">
+            <span class="pos-topbar-label">操作員</span>
+            <span class="pos-topbar-value">@_operatorName</span>
+        </div>
+        <div class="pos-topbar-item">
+            <span class="pos-topbar-label">客戶</span>
+            <span class="pos-topbar-value">@_customerDisplay</span>
+        </div>
+        @if (!string.IsNullOrEmpty(_uniteNo))
         {
-            <div class="text-danger small mt-1">@_searchError</div>
+            <div class="pos-topbar-item">
+                <span class="pos-topbar-label">統編</span>
+                <span class="pos-topbar-value" style="color:#ffeb3b;">@_uniteNo</span>
+            </div>
         }
+        @if (_discountRate < 10)
+        {
+            <div class="pos-topbar-item">
+                <span class="pos-topbar-label">折扣</span>
+                <span class="pos-topbar-value" style="color:#ffcc80;">@_discountRate 折</span>
+            </div>
+        }
+        <div class="pos-topbar-spacer"></div>
+        <div class="pos-topbar-item">
+            <span class="pos-topbar-label" style="font-size:0.75rem;">MicroBoss POS</span>
+        </div>
     </div>
-    <div class="col-md-3">
-        <label class="form-label mb-1">訂單日期</label>
-        <DxDateEdit @bind-Date="@_orderDate" />
+
+    <!-- MAIN BODY -->
+    <div class="pos-body">
+
+        <!-- LEFT PANEL -->
+        <div class="pos-left">
+
+            <!-- BARCODE INPUT AREA -->
+            <div class="pos-barcode-area">
+                <span class="pos-mode-label">@_modeLabel</span>
+                <input @ref="_barcodeInputRef"
+                       class="pos-barcode-input"
+                       type="text"
+                       value="@_barcodeInput"
+                       @oninput="OnBarcodeInput"
+                       @onkeydown="OnBarcodeKeyDown"
+                       autocomplete="off"
+                       placeholder="@_modePlaceholder" />
+                <button class="pos-barcode-btn" @onclick="OnConfirm">搜尋/確認</button>
+            </div>
+
+            <!-- PRODUCT INFO DISPLAY -->
+            <div class="pos-product-info">
+                @if (_lastProduct == null && string.IsNullOrEmpty(_productError))
+                {
+                    <div class="pos-product-info-empty">請掃描商品條碼或輸入品號</div>
+                }
+                else if (!string.IsNullOrEmpty(_productError))
+                {
+                    <div class="pos-product-notfound">
+                        <span style="font-size:1.1rem;">⚠ @_productError</span>
+                    </div>
+                }
+                else if (_lastProduct != null)
+                {
+                    <div class="pos-product-found">
+                        <div class="pos-product-barcode">@_lastProduct.BaseBarcode &nbsp;|&nbsp; @_lastProduct.ProductNo</div>
+                        <div class="pos-product-name">@_lastProduct.ProductName</div>
+                        <div class="pos-product-price">
+                            單價: @_lastScannedPrice.ToString("N0") &nbsp;×&nbsp; @_lastScannedQty
+                            &nbsp;&nbsp;
+                            <span class="pos-product-subtotal">= @(_lastScannedPrice * _lastScannedQty).ToString("N0")</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- CART GRID -->
+            <div class="pos-cart">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="num">#</th>
+                            <th>品號</th>
+                            <th>品名</th>
+                            <th class="qty">數量</th>
+                            <th class="price">單價</th>
+                            <th class="amount">小計</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < _cartItems.Count; i++)
+                        {
+                            var item = _cartItems[i];
+                            var idx = i;
+                            <tr class="@(_selectedIndex == idx ? "selected" : "")"
+                                @onclick="() => SelectRow(idx)">
+                                <td class="num">@(idx + 1)</td>
+                                <td>@item.ProductNo</td>
+                                <td>@item.ProductName</td>
+                                <td class="qty">@item.OrderQty</td>
+                                <td class="price">@item.ItemPrice.ToString("N0")</td>
+                                <td class="amount">@item.ItemAmount.ToString("N0")</td>
+                            </tr>
+                        }
+                        @if (_cartItems.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" style="text-align:center;color:#9e9e9e;padding:20px;">購物車是空的</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- RIGHT PANEL: KEYPAD + FUNCTION BUTTONS -->
+        <div class="pos-right">
+
+            <!-- NUMERIC KEYPAD -->
+            <div class="pos-keypad">
+                <button class="pos-key" @onclick='() => KeypadPress("7")'>7</button>
+                <button class="pos-key" @onclick='() => KeypadPress("8")'>8</button>
+                <button class="pos-key" @onclick='() => KeypadPress("9")'>9</button>
+                <button class="pos-key key-action" @onclick="ShowCustomerSelect">客戶<br/>切換</button>
+
+                <button class="pos-key" @onclick='() => KeypadPress("4")'>4</button>
+                <button class="pos-key" @onclick='() => KeypadPress("5")'>5</button>
+                <button class="pos-key" @onclick='() => KeypadPress("6")'>6</button>
+                <button class="pos-key key-action" @onclick="EnterChangeQtyMode">修改<br/>數量</button>
+
+                <button class="pos-key" @onclick='() => KeypadPress("1")'>1</button>
+                <button class="pos-key" @onclick='() => KeypadPress("2")'>2</button>
+                <button class="pos-key" @onclick='() => KeypadPress("3")'>3</button>
+                <button class="pos-key key-action" @onclick="DeleteSelected">刪除<br/>品項</button>
+
+                <button class="pos-key" @onclick='() => KeypadPress("0")'>0</button>
+                <button class="pos-key" @onclick='() => KeypadPress("00")'>00</button>
+                <button class="pos-key" @onclick='() => KeypadPress(".")'>.</button>
+                <button class="pos-key key-action" @onclick="EnterChangePriceMode">修改<br/>單價</button>
+
+                <button class="pos-key key-clear" @onclick="ClearInput">清除</button>
+                <button class="pos-key key-back" @onclick="Backspace">←</button>
+                <button class="pos-key key-enter" @onclick="OnConfirm" style="grid-column:span 2;">確認</button>
+            </div>
+
+            <hr class="pos-divider" />
+
+            <!-- FUNCTION BUTTONS -->
+            <div class="pos-fnrow">
+                <button class="pos-fn fn-new" @onclick="NewTransaction">銷貨</button>
+                <button class="pos-fn fn-checkout" @onclick="EnterCheckoutMode">結帳</button>
+            </div>
+            <div class="pos-fnrow">
+                <button class="pos-fn fn-orange" @onclick="EnterDiscountMode">折扣</button>
+                <button class="pos-fn fn-purple" @onclick="EnterInvoiceMode">發票</button>
+            </div>
+            <div class="pos-fnrow">
+                <button class="pos-fn fn-grey" @onclick="LeavePos">離開</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="pos-bottombar">
+        <div class="pos-bottom-item">
+            <span class="pos-bottom-label">累計</span>
+            <span class="pos-bottom-value big">@_runningTotal.ToString("N0")</span>
+        </div>
+        <div class="pos-bottom-item">
+            <span class="pos-bottom-label">數量</span>
+            <span class="pos-bottom-value">@_totalQty</span>
+        </div>
+        @if (_mode == PosMode.Checkout || _transactionDone)
+        {
+            <div class="pos-bottom-item">
+                <span class="pos-bottom-label">實收</span>
+                <span class="pos-bottom-value">@_receivedAmount.ToString("N0")</span>
+            </div>
+            <div class="pos-bottom-item">
+                <span class="pos-bottom-label">找零</span>
+                <span class="pos-bottom-value" style="color:@(_change >= 0 ? "#a5d6a7" : "#ef5350");">
+                    @_change.ToString("N0")
+                </span>
+            </div>
+        }
+        <div class="pos-bottom-spacer"></div>
+        @if (!string.IsNullOrEmpty(_lastOrderNo))
+        {
+            <div class="pos-bottom-item">
+                <span class="pos-bottom-label">訂單號</span>
+                <span class="pos-bottom-value" style="color:#a5d6a7;font-size:0.9rem;">@_lastOrderNo</span>
+            </div>
+        }
     </div>
 </div>
 
-@if (_cartItems.Count > 0)
+<!-- TOAST -->
+@if (_showToast)
 {
-    <DxGrid Data="@_cartItems" ShowFilterRow="false" PageSize="100">
-        <Columns>
-            <DxGridDataColumn FieldName="@nameof(CartItem.ProductNo)" Caption="產品編號" />
-            <DxGridDataColumn FieldName="@nameof(CartItem.ProductName)" Caption="產品名稱" />
-            <DxGridDataColumn Caption="數量" Width="150px">
-                <CellDisplayTemplate>
-                    @{ var item = (CartItem)context.DataItem; }
-                    <div class="input-group input-group-sm">
-                        <DxButton Text="-" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => ChangeQty(item, -1))" />
-                        <DxSpinEdit Value="@item.OrderQty" ValueChanged="@((int v) => { item.OrderQty = v; RecalcItem(item); })" MinValue="1" />
-                        <DxButton Text="+" RenderStyle="ButtonRenderStyle.Secondary" Click="@(() => ChangeQty(item, 1))" />
+    <div class="pos-toast @(_toastIsError ? "error" : "")">@_toastMessage</div>
+}
+
+<!-- CUSTOMER SELECT POPUP -->
+@if (_showCustomerPopup)
+{
+    <div class="pos-popup-overlay" @onclick="CloseCustomerPopup">
+        <div class="pos-popup" @onclick:stopPropagation="true">
+            <h5>選擇客戶</h5>
+            <input class="pos-popup-input"
+                   type="text"
+                   placeholder="搜尋客戶..."
+                   value="@_customerSearch"
+                   @oninput="OnCustomerSearch"
+                   @ref="_customerSearchRef" />
+            <div class="pos-popup-list">
+                @foreach (var c in _filteredCustomers)
+                {
+                    var cust = c;
+                    <div class="pos-popup-list-item @(_selectedCustomerId == cust.CustomerId ? "active" : "")"
+                         @onclick="() => SelectCustomer(cust)">
+                        @cust.CustomerId &nbsp; @cust.CustomerName
                     </div>
-                </CellDisplayTemplate>
-            </DxGridDataColumn>
-            <DxGridDataColumn Caption="單價" Width="130px">
-                <CellDisplayTemplate>
-                    @{ var item = (CartItem)context.DataItem; }
-                    <DxSpinEdit Value="@item.ItemPrice" ValueChanged="@((decimal v) => { item.ItemPrice = v; RecalcItem(item); })" MinValue="0" Increment="0.01m" />
-                </CellDisplayTemplate>
-            </DxGridDataColumn>
-            <DxGridDataColumn FieldName="@nameof(CartItem.ItemAmount)" Caption="小計" DisplayFormat="N2" Alignment="HorizontalAlignment.Right" Width="110px" />
-            <DxGridDataColumn Caption="" Width="60px">
-                <CellDisplayTemplate>
-                    @{ var item = (CartItem)context.DataItem; }
-                    <DxButton Text="✕" RenderStyle="ButtonRenderStyle.Danger" Click="@(() => RemoveItem(item))" />
-                </CellDisplayTemplate>
-            </DxGridDataColumn>
-        </Columns>
-    </DxGrid>
-
-    <div class="row justify-content-end mt-2">
-        <div class="col-md-4">
-            <DxFormLayout>
-                <DxFormLayoutItem Caption="小計" ColSpanMd="12">
-                    <Template><div class="form-control-plaintext text-end fw-bold">@_subTotal.ToString("N2")</div></Template>
-                </DxFormLayoutItem>
-                <DxFormLayoutItem Caption="稅額 (5%)" ColSpanMd="12">
-                    <Template><div class="form-control-plaintext text-end">@_tax.ToString("N2")</div></Template>
-                </DxFormLayoutItem>
-                <DxFormLayoutItem Caption="合計" ColSpanMd="12">
-                    <Template><div class="form-control-plaintext text-end fw-bold fs-5">@_total.ToString("N2")</div></Template>
-                </DxFormLayoutItem>
-            </DxFormLayout>
+                }
+            </div>
+            <div class="pos-popup-btns">
+                <button class="pos-fn fn-grey" style="min-width:80px;" @onclick="CloseCustomerPopup">取消</button>
+            </div>
         </div>
-    </div>
-
-    <div class="d-flex gap-2 mt-2">
-        <DxButton Text="完成訂單" RenderStyle="ButtonRenderStyle.Success" Enabled="@(!_busy)" Click="@CompleteOrder" />
-        <DxButton Text="清空購物車" RenderStyle="ButtonRenderStyle.Secondary" Enabled="@(!_busy)" Click="@ClearCart" />
-    </div>
-}
-else
-{
-    <div class="text-center text-muted py-5">
-        <p>購物車是空的，請搜尋產品加入</p>
-    </div>
-}
-
-@if (!string.IsNullOrEmpty(_message))
-{
-    <div class="alert @(_isError ? "alert-danger" : "alert-success") mt-3 alert-dismissible">
-        @_message
-        <button type="button" class="btn-close" @onclick="() => _message = null"></button>
     </div>
 }
 
@@ -111,114 +571,346 @@ else
     [Inject] private IProductService ProductService { get; set; } = default!;
     [Inject] private ICustomerService CustomerService { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
 
-    private List<CustomerDto> _customers = new();
-    private string _customerId = string.Empty;
-    private string _productSearch = string.Empty;
-    private string? _searchError;
-    private DateTime _orderDate = DateTime.Today;
-    private bool _busy;
-    private string? _message;
-    private bool _isError;
+    // ── Mode state machine ──────────────────────────────────────────────
+    private enum PosMode { Normal, Checkout, ChangeQty, ChangePrice, Discount, Invoice }
+    private PosMode _mode = PosMode.Normal;
 
+    private string _modeLabel => _mode switch
+    {
+        PosMode.Normal      => "請掃描商品條碼",
+        PosMode.Checkout    => "← 輸入實收金額",
+        PosMode.ChangeQty   => "← 輸入修改數量",
+        PosMode.ChangePrice => "← 輸入修改單價",
+        PosMode.Discount    => "← 輸入折數 (8=八折)",
+        PosMode.Invoice     => "← 輸入發票統編",
+        _                   => ""
+    };
+
+    private string _modePlaceholder => _mode switch
+    {
+        PosMode.Normal      => "品號 / 條碼",
+        PosMode.Checkout    => "實收金額",
+        PosMode.ChangeQty   => "新數量",
+        PosMode.ChangePrice => "新單價",
+        PosMode.Discount    => "折數 (例: 8 = 八折)",
+        PosMode.Invoice     => "統一編號",
+        _                   => ""
+    };
+
+    // ── UI state ────────────────────────────────────────────────────────
+    private string _barcodeInput = string.Empty;
+    private ElementReference _barcodeInputRef;
+    private System.Timers.Timer? _clockTimer;
+    private System.Timers.Timer? _toastTimer;
+    private string _currentTime = DateTime.Now.ToString("HH:mm:ss");
+    private bool _transactionDone = false;
+    private string _operatorName = "";
+    private string _lastOrderNo = "";
+
+    // ── Customer ────────────────────────────────────────────────────────
+    private string _selectedCustomerId = "";
+    private string _selectedCustomerName = "";
+    private string _customerDisplay => string.IsNullOrEmpty(_selectedCustomerName) ? "999 CASH" : $"{_selectedCustomerId} {_selectedCustomerName}";
+
+    // ── Product info display ────────────────────────────────────────────
+    private ProductDto? _lastProduct = null;
+    private string? _productError = null;
+    private decimal _lastScannedPrice = 0;
+    private int _lastScannedQty = 1;
+
+    // ── Cart ────────────────────────────────────────────────────────────
     private List<CartItem> _cartItems = new();
+    private int _selectedIndex = -1;
 
-    private decimal _subTotal => _cartItems.Sum(i => i.ItemAmount);
-    private decimal _tax => Math.Round(_subTotal * 0.05m, 0);
-    private decimal _total => _subTotal + _tax;
+    private decimal _runningTotal => Math.Round(_cartItems.Sum(i => i.ItemAmount) * (_discountRate / 10m), 0);
+    private int _totalQty => _cartItems.Sum(i => i.OrderQty);
 
+    // ── Checkout ────────────────────────────────────────────────────────
+    private decimal _receivedAmount = 0;
+    private decimal _change = 0;
+    private decimal _discountRate = 10; // 10 = no discount; 8 = 80%
+    private string _uniteNo = "";
+
+    // ── Toast ───────────────────────────────────────────────────────────
+    private bool _showToast = false;
+    private string _toastMessage = "";
+    private bool _toastIsError = false;
+
+    // ── Customer popup ──────────────────────────────────────────────────
+    private bool _showCustomerPopup = false;
+    private string _customerSearch = "";
+    private List<CustomerDto> _allCustomers = new();
+    private List<CustomerDto> _filteredCustomers = new();
+    private ElementReference _customerSearchRef;
+
+    // ───────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _operatorName = authState.User.Identity?.Name ?? "未知";
+
         var result = await CustomerService.QueryAsync(new CustomerQueryDto { Page = 1, PageSize = 500 });
-        _customers = result.Items;
+        _allCustomers = result.Items;
+        _filteredCustomers = _allCustomers;
+
+        _clockTimer = new System.Timers.Timer(1000);
+        _clockTimer.Elapsed += (_, _) =>
+        {
+            _currentTime = DateTime.Now.ToString("HH:mm:ss");
+            InvokeAsync(StateHasChanged);
+        };
+        _clockTimer.Start();
     }
 
-    private async Task OnProductSearchKeyDown(KeyboardEventArgs e)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await FocusBarcode();
+    }
+
+    private async Task FocusBarcode()
+    {
+        try { await JS.InvokeVoidAsync("eval", "document.querySelector('.pos-barcode-input')?.focus()"); }
+        catch { /* ignore during prerender */ }
+    }
+
+    // ── Input handling ──────────────────────────────────────────────────
+    private void OnBarcodeInput(ChangeEventArgs e)
+    {
+        _barcodeInput = e.Value?.ToString() ?? "";
+    }
+
+    private async Task OnBarcodeKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
-            await AddProduct();
+            await OnConfirm();
+        else if (e.Key == "Escape")
+            ClearInput();
     }
 
-    private async Task AddProduct()
+    private void KeypadPress(string digit)
     {
-        _searchError = null;
-        var keyword = _productSearch.Trim();
-        if (string.IsNullOrWhiteSpace(keyword)) return;
+        _barcodeInput += digit;
+        StateHasChanged();
+    }
 
-        var product = await ProductService.GetByNoAsync(keyword);
+    private void ClearInput()
+    {
+        _barcodeInput = "";
+        if (_mode != PosMode.Normal) _mode = PosMode.Normal;
+        StateHasChanged();
+    }
+
+    private void Backspace()
+    {
+        if (_barcodeInput.Length > 0)
+            _barcodeInput = _barcodeInput[..^1];
+        StateHasChanged();
+    }
+
+    private async Task OnConfirm()
+    {
+        switch (_mode)
+        {
+            case PosMode.Normal:
+                await ScanProduct();
+                break;
+            case PosMode.Checkout:
+                await DoCheckout();
+                break;
+            case PosMode.ChangeQty:
+                ApplyChangeQty();
+                break;
+            case PosMode.ChangePrice:
+                ApplyChangePrice();
+                break;
+            case PosMode.Discount:
+                ApplyDiscount();
+                break;
+            case PosMode.Invoice:
+                ApplyInvoice();
+                break;
+        }
+        await FocusBarcode();
+    }
+
+    // ── Normal mode: scan product ───────────────────────────────────────
+    private async Task ScanProduct()
+    {
+        var input = _barcodeInput.Trim();
+        if (string.IsNullOrWhiteSpace(input)) return;
+
+        _productError = null;
+
+        // Qty prefix: if input longer than 13 chars, treat leading digits as qty
+        int qty = 1;
+        string code = input;
+        if (input.Length > 13)
+        {
+            var prefixLen = input.Length - 13;
+            var prefix = input[..prefixLen];
+            if (int.TryParse(prefix, out var parsedQty) && parsedQty > 0)
+            {
+                qty = parsedQty;
+                code = input[prefixLen..];
+            }
+        }
+
+        var product = await ProductService.GetByNoAsync(code);
+        _barcodeInput = "";
+
         if (product == null)
         {
-            _searchError = $"找不到產品：{keyword}";
+            _productError = $"找不到產品：{code}";
+            _lastProduct = null;
+            ShowToast($"找不到產品：{code}", isError: true);
+            StateHasChanged();
             return;
         }
+
+        var unitPrice = product.CostData?.UnitPriceA ?? 0;
+        _lastProduct = product;
+        _lastScannedPrice = unitPrice;
+        _lastScannedQty = qty;
+        _productError = null;
 
         var existing = _cartItems.FirstOrDefault(i => i.ProductId == product.ProductId);
         if (existing != null)
         {
-            existing.OrderQty++;
-            RecalcItem(existing);
+            existing.OrderQty += qty;
+            existing.ItemAmount = existing.OrderQty * existing.ItemPrice;
         }
         else
         {
-            var unitPrice = product.CostData?.UnitPriceA ?? 0;
             var item = new CartItem
             {
                 ProductId = product.ProductId,
                 ProductNo = product.ProductNo ?? string.Empty,
                 ProductName = product.ProductName ?? string.Empty,
                 BaseUnit = product.BaseUnit,
-                OrderQty = 1,
-                ItemPrice = unitPrice
+                OrderQty = qty,
+                ItemPrice = unitPrice,
+                ItemAmount = qty * unitPrice
             };
-            RecalcItem(item);
             _cartItems.Add(item);
+            _selectedIndex = _cartItems.Count - 1;
         }
 
-        _productSearch = string.Empty;
+        StateHasChanged();
     }
 
-    private void ChangeQty(CartItem item, int delta)
+    // ── Cart interaction ────────────────────────────────────────────────
+    private void SelectRow(int index)
     {
-        item.OrderQty = Math.Max(1, item.OrderQty + delta);
-        RecalcItem(item);
+        _selectedIndex = index;
+        StateHasChanged();
     }
 
-    private void RecalcItem(CartItem item)
+    private void DeleteSelected()
     {
-        if (item.OrderQty < 1) item.OrderQty = 1;
-        item.ItemAmount = item.OrderQty * item.ItemPrice;
-    }
-
-    private void RemoveItem(CartItem item) => _cartItems.Remove(item);
-    private void ClearCart() => _cartItems.Clear();
-
-    private async Task CompleteOrder()
-    {
-        if (_cartItems.Count == 0)
+        if (_selectedIndex >= 0 && _selectedIndex < _cartItems.Count)
         {
-            _message = "購物車是空的";
-            _isError = true;
+            _cartItems.RemoveAt(_selectedIndex);
+            _selectedIndex = Math.Min(_selectedIndex, _cartItems.Count - 1);
+            StateHasChanged();
+        }
+    }
+
+    private void NewTransaction()
+    {
+        _cartItems.Clear();
+        _selectedIndex = -1;
+        _barcodeInput = "";
+        _mode = PosMode.Normal;
+        _transactionDone = false;
+        _receivedAmount = 0;
+        _change = 0;
+        _discountRate = 10;
+        _uniteNo = "";
+        _lastOrderNo = "";
+        _lastProduct = null;
+        _productError = null;
+        _selectedCustomerId = "";
+        _selectedCustomerName = "";
+        StateHasChanged();
+    }
+
+    // ── Mode transitions ────────────────────────────────────────────────
+    private void EnterCheckoutMode()
+    {
+        if (_cartItems.Count == 0) { ShowToast("購物車是空的", true); return; }
+        _mode = PosMode.Checkout;
+        _barcodeInput = _runningTotal.ToString("N0").Replace(",", "");
+        StateHasChanged();
+    }
+
+    private void EnterChangeQtyMode()
+    {
+        if (_selectedIndex < 0 || _selectedIndex >= _cartItems.Count)
+        {
+            ShowToast("請先選取品項", true); return;
+        }
+        _mode = PosMode.ChangeQty;
+        _barcodeInput = _cartItems[_selectedIndex].OrderQty.ToString();
+        StateHasChanged();
+    }
+
+    private void EnterChangePriceMode()
+    {
+        if (_selectedIndex < 0 || _selectedIndex >= _cartItems.Count)
+        {
+            ShowToast("請先選取品項", true); return;
+        }
+        _mode = PosMode.ChangePrice;
+        _barcodeInput = _cartItems[_selectedIndex].ItemPrice.ToString("N0").Replace(",", "");
+        StateHasChanged();
+    }
+
+    private void EnterDiscountMode()
+    {
+        _mode = PosMode.Discount;
+        _barcodeInput = _discountRate.ToString();
+        StateHasChanged();
+    }
+
+    private void EnterInvoiceMode()
+    {
+        _mode = PosMode.Invoice;
+        _barcodeInput = _uniteNo;
+        StateHasChanged();
+    }
+
+    // ── Apply actions ───────────────────────────────────────────────────
+    private async Task DoCheckout()
+    {
+        if (!decimal.TryParse(_barcodeInput, out var received) || received < 0)
+        {
+            ShowToast("請輸入有效金額", true);
             return;
         }
+        _receivedAmount = received;
+        _change = received - _runningTotal;
+        _barcodeInput = "";
+        _mode = PosMode.Normal;
 
-        _busy = true;
-        _message = null;
-
+        // Save the order
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var operatorId = authState.User.Identity?.Name ?? "system";
-
-            var selectedCustomer = _customers.FirstOrDefault(c => c.CustomerId == _customerId);
+            var opId = authState.User.Identity?.Name ?? "system";
 
             var dto = new CreateOrderDto
             {
-                CustomerId = string.IsNullOrEmpty(_customerId) ? null : _customerId,
-                CustomerName = selectedCustomer?.CustomerName,
-                OrderDate = _orderDate,
-                TaxType = 1, // 含稅
-                InvoiceType = 1,
-                PrePayAmount = 0,
+                CustomerId = string.IsNullOrEmpty(_selectedCustomerId) ? null : _selectedCustomerId,
+                CustomerName = string.IsNullOrEmpty(_selectedCustomerName) ? "CASH" : _selectedCustomerName,
+                OrderDate = DateTime.Today,
+                TaxType = 1,
+                InvoiceType = string.IsNullOrEmpty(_uniteNo) ? 1 : 2,
+                UniteNo = string.IsNullOrEmpty(_uniteNo) ? null : _uniteNo,
+                PrePayAmount = _receivedAmount,
                 OrderDetails = _cartItems.Select(i => new CreateOrderDetailDto
                 {
                     ProductId = i.ProductId,
@@ -228,27 +920,149 @@ else
                     OrderUnit = i.BaseUnit,
                     OrderQty = i.OrderQty,
                     ItemPrice = i.ItemPrice,
-                    ItemDiscount = 0
+                    ItemDiscount = _discountRate < 10 ? (10 - _discountRate) : 0
                 }).ToList()
             };
 
-            var order = await OrderService.CreateAsync(dto, operatorId);
-            _message = $"訂單建立成功！訂單號：{order.OrderNo}";
-            _isError = false;
-            ClearCart();
-            _customerId = string.Empty;
+            var order = await OrderService.CreateAsync(dto, opId);
+            _lastOrderNo = order.OrderNo;
+            _transactionDone = true;
+            ShowToast($"結帳完成！訂單：{order.OrderNo}　找零：{_change:N0}");
         }
         catch (Exception ex)
         {
-            _message = $"建立訂單失敗：{ex.Message}";
-            _isError = true;
+            ShowToast($"儲存失敗：{ex.Message}", true);
         }
-        finally
-        {
-            _busy = false;
-        }
+
+        StateHasChanged();
     }
 
+    private void ApplyChangeQty()
+    {
+        if (_selectedIndex < 0 || _selectedIndex >= _cartItems.Count) { _mode = PosMode.Normal; return; }
+        if (!int.TryParse(_barcodeInput, out var qty) || qty < 1)
+        {
+            ShowToast("請輸入有效數量", true);
+            return;
+        }
+        var item = _cartItems[_selectedIndex];
+        item.OrderQty = qty;
+        item.ItemAmount = item.OrderQty * item.ItemPrice;
+        _barcodeInput = "";
+        _mode = PosMode.Normal;
+        StateHasChanged();
+    }
+
+    private void ApplyChangePrice()
+    {
+        if (_selectedIndex < 0 || _selectedIndex >= _cartItems.Count) { _mode = PosMode.Normal; return; }
+        if (!decimal.TryParse(_barcodeInput, out var price) || price < 0)
+        {
+            ShowToast("請輸入有效單價", true);
+            return;
+        }
+        var item = _cartItems[_selectedIndex];
+        item.ItemPrice = price;
+        item.ItemAmount = item.OrderQty * item.ItemPrice;
+        _barcodeInput = "";
+        _mode = PosMode.Normal;
+        StateHasChanged();
+    }
+
+    private void ApplyDiscount()
+    {
+        if (!decimal.TryParse(_barcodeInput, out var rate) || rate < 0 || rate > 10)
+        {
+            ShowToast("折數範圍 0-10 (10=無折扣)", true);
+            return;
+        }
+        _discountRate = rate;
+        _barcodeInput = "";
+        _mode = PosMode.Normal;
+        ShowToast(rate == 10 ? "已取消折扣" : $"已設定 {rate} 折");
+        StateHasChanged();
+    }
+
+    private void ApplyInvoice()
+    {
+        _uniteNo = _barcodeInput.Trim();
+        _barcodeInput = "";
+        _mode = PosMode.Normal;
+        ShowToast(string.IsNullOrEmpty(_uniteNo) ? "已清除統編" : $"統編：{_uniteNo}");
+        StateHasChanged();
+    }
+
+    // ── Customer popup ──────────────────────────────────────────────────
+    private async Task ShowCustomerSelect()
+    {
+        _customerSearch = "";
+        _filteredCustomers = _allCustomers;
+        _showCustomerPopup = true;
+        StateHasChanged();
+        await Task.Delay(100);
+        try { await JS.InvokeVoidAsync("eval", "document.querySelector('.pos-popup-input')?.focus()"); } catch { }
+    }
+
+    private void CloseCustomerPopup()
+    {
+        _showCustomerPopup = false;
+        StateHasChanged();
+        _ = FocusBarcode();
+    }
+
+    private void OnCustomerSearch(ChangeEventArgs e)
+    {
+        _customerSearch = e.Value?.ToString() ?? "";
+        var kw = _customerSearch.Trim().ToLower();
+        _filteredCustomers = string.IsNullOrEmpty(kw)
+            ? _allCustomers
+            : _allCustomers.Where(c =>
+                (c.CustomerId?.ToLower().Contains(kw) ?? false) ||
+                (c.CustomerName?.ToLower().Contains(kw) ?? false)).ToList();
+        StateHasChanged();
+    }
+
+    private void SelectCustomer(CustomerDto c)
+    {
+        _selectedCustomerId = c.CustomerId;
+        _selectedCustomerName = c.CustomerName ?? "";
+        _showCustomerPopup = false;
+        StateHasChanged();
+        _ = FocusBarcode();
+    }
+
+    // ── Leave ───────────────────────────────────────────────────────────
+    private async Task LeavePos()
+    {
+        await JS.InvokeVoidAsync("window.close");
+    }
+
+    // ── Toast helper ────────────────────────────────────────────────────
+    private void ShowToast(string message, bool isError = false)
+    {
+        _toastMessage = message;
+        _toastIsError = isError;
+        _showToast = true;
+        _toastTimer?.Dispose();
+        _toastTimer = new System.Timers.Timer(3000);
+        _toastTimer.Elapsed += (_, _) =>
+        {
+            _showToast = false;
+            _toastTimer?.Dispose();
+            InvokeAsync(StateHasChanged);
+        };
+        _toastTimer.AutoReset = false;
+        _toastTimer.Start();
+    }
+
+    // ── IDisposable ─────────────────────────────────────────────────────
+    public void Dispose()
+    {
+        _clockTimer?.Dispose();
+        _toastTimer?.Dispose();
+    }
+
+    // ── Cart item ───────────────────────────────────────────────────────
     private class CartItem
     {
         public string ProductId { get; set; } = string.Empty;
