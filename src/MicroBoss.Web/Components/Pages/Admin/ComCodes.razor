@@ -1,0 +1,247 @@
+@page "/admin/comcodes"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@using MicroBoss.Domain.Enums
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+<PageTitle>輔助代碼管理 - MicroBoss</PageTitle>
+
+<h4>輔助代碼管理</h4>
+
+<div class="row mb-3">
+    <div class="col-auto">
+        <label class="form-label fw-semibold">代碼群組</label>
+        <select class="form-select" @bind="_selectedGroup" @bind:after="LoadCodesAsync">
+            <option value="">-- 請選擇群組 --</option>
+            @foreach (var g in _groups)
+            {
+                <option value="@g.Value">@g.Label (@g.Value)</option>
+            }
+        </select>
+    </div>
+    @if (!string.IsNullOrEmpty(_selectedGroup))
+    {
+        <div class="col-auto align-self-end">
+            <button class="btn btn-primary btn-sm" @onclick="ShowCreateForm">新增代碼</button>
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-danger alert-dismissible">
+        @_errorMessage
+        <button type="button" class="btn-close" @onclick="() => _errorMessage = null"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_selectedGroup))
+{
+    @if (_codes == null)
+    {
+        <p>載入中...</p>
+    }
+    else if (_codes.Count == 0)
+    {
+        <p class="text-muted">此群組尚無代碼資料。</p>
+    }
+    else
+    {
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+                    <th>代碼 ID</th>
+                    <th>代碼名稱</th>
+                    <th>排序</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in _codes)
+                {
+                    <tr>
+                        <td>@item.CodeId</td>
+                        <td>@item.CodeName</td>
+                        <td>@item.SortIndex</td>
+                        <td>
+                            <button class="btn btn-outline-primary btn-sm" @onclick="() => ShowEditForm(item)">編輯</button>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteCode(item)">刪除</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_isEditing ? "編輯代碼" : "新增代碼")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_formError))
+                    {
+                        <div class="alert alert-danger">@_formError</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">群組 ID</label>
+                        <input class="form-control" value="@_selectedGroup" disabled />
+                    </div>
+                    @if (!_isEditing)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">代碼 ID</label>
+                            <input class="form-control" @bind="_formCodeId" placeholder="例如: 001" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">代碼 ID</label>
+                            <input class="form-control" value="@_formCodeId" disabled />
+                        </div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">代碼名稱</label>
+                        <input class="form-control" @bind="_formCodeName" placeholder="代碼名稱" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">排序</label>
+                        <input type="number" class="form-control" @bind="_formSortIndex" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">取消</button>
+                    <button class="btn btn-primary" @onclick="SaveCode">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private IComCodeService ComCodeService { get; set; } = default!;
+
+    private record GroupOption(string Value, string Label);
+
+    private static readonly List<GroupOption> _groups =
+    [
+        new(ComGroup.Manufactory,         "製造商"),
+        new(ComGroup.Unit,                "單位"),
+        new(ComGroup.Currency,            "貨幣"),
+        new(ComGroup.SettleMethod,        "結算方法"),
+        new(ComGroup.Stock,               "庫存"),
+        new(ComGroup.Finance,             "財務"),
+        new(ComGroup.Valuation,           "評價"),
+        new(ComGroup.SupplierType,        "供應商類型"),
+        new(ComGroup.PaymentType,         "支付類型"),
+        new(ComGroup.ReceiptPayMethod,    "收付方式"),
+        new(ComGroup.ProductMajorCategory,"產品大類"),
+        new(ComGroup.ProductSubCategory,  "產品小類"),
+        new(ComGroup.Voltage,             "電壓"),
+        new(ComGroup.CustomerType,        "客戶類型"),
+        new(ComGroup.CustomerTaxType,     "客戶稅型"),
+        new(ComGroup.CustomerPaymentMethod,"客戶支付方式"),
+        new(ComGroup.DeliveryMethod,      "交貨方式"),
+        new(ComGroup.PurchaseItemType,    "採購項目類型"),
+    ];
+
+    private string _selectedGroup = string.Empty;
+    private List<ComCodeDto>? _codes;
+    private bool _showForm;
+    private bool _isEditing;
+    private string? _formError;
+    private string? _errorMessage;
+
+    // Form fields
+    private string _formCodeId = string.Empty;
+    private string _formCodeName = string.Empty;
+    private int? _formSortIndex;
+
+    private async Task LoadCodesAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedGroup))
+        {
+            _codes = null;
+            return;
+        }
+        try
+        {
+            _codes = await ComCodeService.GetByGroupAsync(_selectedGroup);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private void ShowCreateForm()
+    {
+        _isEditing = false;
+        _formCodeId = string.Empty;
+        _formCodeName = string.Empty;
+        _formSortIndex = null;
+        _formError = null;
+        _showForm = true;
+    }
+
+    private void ShowEditForm(ComCodeDto code)
+    {
+        _isEditing = true;
+        _formCodeId = code.CodeId;
+        _formCodeName = code.CodeName;
+        _formSortIndex = code.SortIndex;
+        _formError = null;
+        _showForm = true;
+    }
+
+    private void CloseForm() => _showForm = false;
+
+    private async Task SaveCode()
+    {
+        _formError = null;
+        try
+        {
+            if (_isEditing)
+            {
+                var dto = new UpdateComCodeDto(_formCodeName, _formSortIndex);
+                await ComCodeService.UpdateAsync(_selectedGroup, _formCodeId, dto);
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(_formCodeId))
+                {
+                    _formError = "代碼 ID 不可為空";
+                    return;
+                }
+                var dto = new CreateComCodeDto(_selectedGroup, _formCodeId, _formCodeName, _formSortIndex);
+                await ComCodeService.CreateAsync(dto);
+            }
+            _showForm = false;
+            _codes = await ComCodeService.GetByGroupAsync(_selectedGroup);
+        }
+        catch (Exception ex)
+        {
+            _formError = ex.Message;
+        }
+    }
+
+    private async Task DeleteCode(ComCodeDto code)
+    {
+        try
+        {
+            await ComCodeService.DeleteAsync(code.GroupId, code.CodeId);
+            _codes = await ComCodeService.GetByGroupAsync(_selectedGroup);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+}

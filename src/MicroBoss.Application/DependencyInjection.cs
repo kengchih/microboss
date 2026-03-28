@@ -19,6 +19,10 @@ public static class DependencyInjection
         services.AddSingleton(config);
         services.AddScoped<IMapper, ServiceMapper>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IComCodeService, ComCodeService>();
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<ISupplierService, SupplierService>();
         return services;
     }
 }
