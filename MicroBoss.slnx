@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MicroBoss.Application/MicroBoss.Application.csproj" />
+    <Project Path="src/MicroBoss.Domain/MicroBoss.Domain.csproj" />
+    <Project Path="src/MicroBoss.Infrastructure/MicroBoss.Infrastructure.csproj" />
+    <Project Path="src/MicroBoss.Web/MicroBoss.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MicroBoss.Application.Tests/MicroBoss.Application.Tests.csproj" />
+    <Project Path="tests/MicroBoss.Infrastructure.Tests/MicroBoss.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
