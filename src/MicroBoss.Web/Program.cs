@@ -21,6 +21,10 @@ try
         .AddInteractiveServerComponents();
     builder.Services.AddControllers();
     builder.Services.AddCascadingAuthenticationState();
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = null;
+    });
     builder.Services
         .AddApplication()
         .AddInfrastructure(builder.Configuration);
@@ -48,9 +52,10 @@ try
     app.UseAuthorization();
     app.UseAntiforgery();
     app.MapStaticAssets();
-    app.MapControllers();
+    app.MapControllers().RequireAuthorization();
     app.MapRazorComponents<App>()
-        .AddInteractiveServerRenderMode();
+        .AddInteractiveServerRenderMode()
+        .RequireAuthorization();
 
     app.Run();
 }
