@@ -1,27 +1,49 @@
+using MicroBoss.Application;
+using MicroBoss.Infrastructure;
 using MicroBoss.Web.Components;
+using MicroBoss.Web.Middleware;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/microboss-.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 
-// Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+try
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    var builder = WebApplication.CreateBuilder(args);
+    builder.Host.UseSerilog();
+    builder.Services.AddRazorComponents()
+        .AddInteractiveServerComponents();
+    builder.Services.AddControllers();
+    builder.Services
+        .AddApplication()
+        .AddInfrastructure(builder.Configuration);
+
+    var app = builder.Build();
+
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseExceptionHandler("/Error", createScopeForErrors: true);
+        app.UseHsts();
+    }
+
+    app.UseMiddleware<GlobalExceptionMiddleware>();
+    app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+    app.UseHttpsRedirection();
+    app.UseAntiforgery();
+    app.MapStaticAssets();
+    app.MapControllers();
+    app.MapRazorComponents<App>()
+        .AddInteractiveServerRenderMode();
+
+    app.Run();
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
-
-app.UseAntiforgery();
-
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
-
-app.Run();
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
