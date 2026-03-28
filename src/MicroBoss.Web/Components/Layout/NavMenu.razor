@@ -18,83 +18,85 @@
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="orders">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 訂單管理
+                <span class="bi bi-receipt-cutoff-nav-menu" aria-hidden="true"></span> 訂單管理
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="purchases">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 採購管理
+                <span class="bi bi-cart-check-fill-nav-menu" aria-hidden="true"></span> 採購管理
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="products">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 產品管理
+                <span class="bi bi-box-seam-fill-nav-menu" aria-hidden="true"></span> 產品管理
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="customers">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 客戶管理
+                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> 客戶管理
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="suppliers">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 供應商
+                <span class="bi bi-truck-nav-menu" aria-hidden="true"></span> 供應商
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="ar">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 應收帳款
+                <span class="bi bi-cash-coin-nav-menu" aria-hidden="true"></span> 應收帳款
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="ar/posting">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 收款總覽
+                <span class="bi bi-bank-nav-menu" aria-hidden="true"></span> 收款總覽
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="invoices/export">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 發票匯出
+                <span class="bi bi-file-earmark-text-nav-menu" aria-hidden="true"></span> 發票匯出
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="inventory">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 庫存管理
+                <span class="bi bi-clipboard-data-fill-nav-menu" aria-hidden="true"></span> 庫存管理
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="pos">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> POS
+                <span class="bi bi-shop-nav-menu" aria-hidden="true"></span> POS
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="maintenance">
-                <span class="bi bi-nav-menu" aria-hidden="true"></span> 維修紀錄
+                <span class="bi bi-wrench-adjustable-nav-menu" aria-hidden="true"></span> 維修紀錄
             </NavLink>
         </div>
 
         <AuthorizeView Roles="Admin">
             <div class="nav-item px-3" style="padding-top:0.5rem;">
                 <hr style="border-color:rgba(255,255,255,0.2);margin:0.5rem 0;" />
-                <span class="nav-link text-white-50 small px-0" style="cursor:default;">資料匯入</span>
+                <span class="nav-link text-white-50 small px-0" style="cursor:default;">
+                    <span class="bi bi-cloud-upload-nav-menu" aria-hidden="true"></span> 資料匯入
+                </span>
             </div>
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="import/bosch">
-                    <span class="bi bi-nav-menu" aria-hidden="true"></span> Bosch 零件匯入
+                    <span class="bi bi-cpu-nav-menu" aria-hidden="true"></span> Bosch 零件匯入
                 </NavLink>
             </div>
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="import/products">
-                    <span class="bi bi-nav-menu" aria-hidden="true"></span> 產品/庫存匯入
+                    <span class="bi bi-database-add-nav-menu" aria-hidden="true"></span> 產品/庫存匯入
                 </NavLink>
             </div>
             <div class="nav-item px-3" style="padding-top:0.5rem;">
@@ -102,12 +104,12 @@
             </div>
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="admin/users">
-                    <span class="bi bi-nav-menu" aria-hidden="true"></span> 使用者管理
+                    <span class="bi bi-person-gear-nav-menu" aria-hidden="true"></span> 使用者管理
                 </NavLink>
             </div>
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="admin/comcodes">
-                    <span class="bi bi-nav-menu" aria-hidden="true"></span> 輔助代碼
+                    <span class="bi bi-list-check-nav-menu" aria-hidden="true"></span> 輔助代碼
                 </NavLink>
             </div>
         </AuthorizeView>
