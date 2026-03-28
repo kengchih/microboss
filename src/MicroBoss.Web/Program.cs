@@ -1,5 +1,6 @@
 using MicroBoss.Application;
 using MicroBoss.Infrastructure;
+using MicroBoss.Infrastructure.Identity;
 using MicroBoss.Web.Components;
 using MicroBoss.Web.Middleware;
 using Serilog;
@@ -22,6 +23,12 @@ try
 
     var app = builder.Build();
 
+    using (var scope = app.Services.CreateScope())
+    {
+        await IdentitySetup.SeedRolesAsync(scope.ServiceProvider);
+        await IdentitySetup.SeedDefaultAdminAsync(scope.ServiceProvider);
+    }
+
     if (!app.Environment.IsDevelopment())
     {
         app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -31,6 +38,8 @@ try
     app.UseMiddleware<GlobalExceptionMiddleware>();
     app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
     app.UseHttpsRedirection();
+    app.UseAuthentication();
+    app.UseAuthorization();
     app.UseAntiforgery();
     app.MapStaticAssets();
     app.MapControllers();

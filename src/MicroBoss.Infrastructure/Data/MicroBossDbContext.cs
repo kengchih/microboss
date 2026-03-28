@@ -1,9 +1,10 @@
 using MicroBoss.Domain.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace MicroBoss.Infrastructure.Data;
 
-public class MicroBossDbContext : DbContext
+public class MicroBossDbContext : IdentityDbContext<ApplicationUser>
 {
     public MicroBossDbContext(DbContextOptions<MicroBossDbContext> options) : base(options) { }
 
@@ -29,6 +30,7 @@ public class MicroBossDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder); // IMPORTANT: must call base for Identity tables
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MicroBossDbContext).Assembly);
     }
 }
