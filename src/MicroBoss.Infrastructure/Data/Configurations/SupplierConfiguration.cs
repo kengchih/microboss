@@ -13,6 +13,8 @@ public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
         builder.Property(s => s.SupplierId).HasMaxLength(50).IsRequired();
         builder.Property(s => s.SupplierShortName).HasMaxLength(100);
         builder.Property(s => s.SupplierFullName).HasMaxLength(200);
+        builder.Property(s => s.Tel1).HasColumnName("Tel_1");
+        builder.Property(s => s.Tel2).HasColumnName("Tel_2");
         builder.Property(s => s.PrepareAmount).HasColumnType("decimal(18,2)");
         builder.Property(s => s.TransQuotaAmount).HasColumnType("decimal(18,2)");
         builder.Property(s => s.SettleDiscount).HasColumnType("decimal(18,2)");

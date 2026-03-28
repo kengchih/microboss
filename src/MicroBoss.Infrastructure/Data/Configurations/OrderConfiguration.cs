@@ -14,6 +14,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.OrderNo).HasMaxLength(50).IsRequired();
         builder.Property(o => o.CustomerId).HasMaxLength(50);
         builder.Property(o => o.CustomerName).HasMaxLength(200);
+        builder.Property(o => o.Tel1).HasColumnName("Tel_1");
+        builder.Property(o => o.Tel2).HasColumnName("Tel_2");
         builder.Property(o => o.InvoiceDiscount).HasColumnType("decimal(18,2)");
         builder.Property(o => o.OrderDiscount).HasColumnType("decimal(18,2)");
         builder.Property(o => o.PrePayAmount).HasColumnType("decimal(18,2)");

@@ -23,10 +23,12 @@ public class AccountsReceivableConfiguration : IEntityTypeConfiguration<Accounts
 
         builder.HasMany(ar => ar.Details)
                .WithOne(d => d.AccountsReceivable)
-               .HasForeignKey(d => d.AccountsReceivableId);
+               .HasForeignKey(d => d.AccountsReceivableId)
+               .HasConstraintName("FK_ACCOUNTS_REFERENCE_ACCOUNTS");
 
         builder.HasMany(ar => ar.Postings)
                .WithOne(p => p.AccountsReceivable)
-               .HasForeignKey(p => p.AccountsReceivableId);
+               .HasForeignKey(p => p.AccountsReceivableId)
+               .HasConstraintName("FK_ACCOUNTR_REFERENCE_ACCOUNTS");
     }
 }

@@ -12,6 +12,7 @@ public class AccountsReceivablePostingConfiguration : IEntityTypeConfiguration<A
         builder.ToTable("AccountReceivablePosting");
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+        builder.Property(p => p.AccountsReceivableId).HasColumnName("AccountsReceivable_Id");
         builder.Property(p => p.Account).HasMaxLength(100);
         builder.Property(p => p.Bank).HasMaxLength(100);
         builder.Property(p => p.CheckNumber).HasMaxLength(50);

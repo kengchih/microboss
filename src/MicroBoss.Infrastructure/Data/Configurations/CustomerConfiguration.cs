@@ -12,6 +12,8 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.HasKey(c => c.CustomerId);
         builder.Property(c => c.CustomerId).HasMaxLength(50).IsRequired();
         builder.Property(c => c.CustomerName).HasMaxLength(200);
+        builder.Property(c => c.Tel1).HasColumnName("Tel_1");
+        builder.Property(c => c.Tel2).HasColumnName("Tel_2");
         builder.Property(c => c.SettleDiscount).HasColumnType("decimal(18,2)");
         builder.Property(c => c.AR).HasColumnType("decimal(18,2)");
         builder.Property(c => c.CL).HasColumnType("decimal(18,2)");
