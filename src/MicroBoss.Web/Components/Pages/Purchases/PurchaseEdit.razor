@@ -1,0 +1,295 @@
+@page "/purchases/new"
+@page "/purchases/{Id}"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@using MicroBoss.Domain.Enums
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(_isNew ? "新增採購單" : $"編輯採購單 - {Id}") - MicroBoss</PageTitle>
+
+<h4>@(_isNew ? "新增採購單" : $"編輯採購單 - {Id}")</h4>
+
+@if (_loading)
+{
+    <p>載入中...</p>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header">採購單基本資料</div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">供應商編號</label>
+                            <input class="form-control" @bind="_dto.SupplierId"
+                                   @bind:event="oninput" @onchange="OnSupplierIdChanged" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">供應商名稱</label>
+                            <input class="form-control" value="@_supplierName" readonly />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">採購日期</label>
+                            <input type="date" class="form-control" @bind="_purchaseDate" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">稅別</label>
+                            <select class="form-select" @bind="_taxTypeStr" @bind:after="RecalcTax">
+                                <option value="0">無稅</option>
+                                <option value="1">內含稅</option>
+                                <option value="2">外加稅</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">發票類型</label>
+                            <select class="form-select" @bind="_invoiceTypeStr">
+                                <option value="0">無</option>
+                                <option value="2">二聯式</option>
+                                <option value="3">三聯式</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">採購備註</label>
+                        <textarea class="form-control" rows="2" @bind="_dto.PurchaseNote"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">金額摘要</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-6">小計</dt>
+                        <dd class="col-6 text-end">@_subTotal.ToString("N2")</dd>
+                        <dt class="col-6">稅率</dt>
+                        <dd class="col-6 text-end">@(_taxRate * 100).ToString("N0")%</dd>
+                        <dt class="col-6">稅額</dt>
+                        <dd class="col-6 text-end">@_taxAmount.ToString("N2")</dd>
+                        <dt class="col-6 fw-bold">合計</dt>
+                        <dd class="col-6 text-end fw-bold">@(_taxTypeStr == "2" ? (_subTotal + _taxAmount).ToString("N2") : _subTotal.ToString("N2"))</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>採購明細</span>
+            <button class="btn btn-sm btn-outline-success" @onclick="AddDetailRow">+ 新增明細</button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:140px;">產品編號</th>
+                        <th>產品名稱</th>
+                        <th style="width:80px;">數量</th>
+                        <th style="width:110px;">單價</th>
+                        <th style="width:110px;">小計</th>
+                        <th style="width:60px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (item, index) in _details.Select((x, i) => (x, i)))
+                    {
+                        <tr>
+                            <td>
+                                <input class="form-control form-control-sm"
+                                       @bind="item.ProductNo"
+                                       @bind:event="oninput" />
+                            </td>
+                            <td>
+                                <input class="form-control form-control-sm"
+                                       @bind="item.ProductChtName" />
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm text-end"
+                                       min="0"
+                                       @bind="item.Qty"
+                                       @bind:event="oninput"
+                                       @onchange="RecalcTax" />
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm text-end"
+                                       min="0" step="0.01"
+                                       @bind="item.ItemPrice"
+                                       @bind:event="oninput"
+                                       @onchange="RecalcTax" />
+                            </td>
+                            <td class="text-end align-middle">
+                                @(((item.ItemPrice ?? 0) * (item.Qty ?? 0)).ToString("N2"))
+                            </td>
+                            <td class="text-center align-middle">
+                                <button class="btn btn-outline-danger btn-sm"
+                                        @onclick="() => RemoveDetailRow(index)">x</button>
+                            </td>
+                        </tr>
+                    }
+                    @if (_details.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-3">尚無明細，請點擊「新增明細」</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" @onclick="Save">儲存</button>
+        <button class="btn btn-secondary" @onclick="Back">返回</button>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Inject] private IPurchaseService PurchaseService { get; set; } = default!;
+    [Inject] private ISupplierService SupplierService { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private bool _isNew;
+    private bool _loading = true;
+    private string _errorMessage = "";
+    private CreatePurchaseDto _dto = new();
+    private List<CreatePurchaseItemDto> _details = new();
+    private string _taxTypeStr = "0";
+    private string _invoiceTypeStr = "0";
+    private DateTime? _purchaseDate = DateTime.Today;
+    private string? _supplierName;
+    private decimal _subTotal;
+    private decimal _taxRate;
+    private decimal _taxAmount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isNew = string.IsNullOrEmpty(Id) || Id == "new";
+
+        if (!_isNew)
+        {
+            var existing = await PurchaseService.GetByIdAsync(Id!);
+            if (existing == null)
+            {
+                Nav.NavigateTo("/purchases");
+                return;
+            }
+
+            _dto = new CreatePurchaseDto
+            {
+                SupplierId = existing.SupplierId,
+                PurchaseDate = existing.PurchaseDate,
+                TaxType = (int)existing.TaxType,
+                InvoiceType = (int)existing.InvoiceType,
+                PurchaseNote = existing.PurchaseNote
+            };
+
+            _taxTypeStr = ((int)existing.TaxType).ToString();
+            _invoiceTypeStr = ((int)existing.InvoiceType).ToString();
+            _purchaseDate = existing.PurchaseDate ?? DateTime.Today;
+
+            _details = existing.Details.Select(d => new CreatePurchaseItemDto
+            {
+                ProductId = d.ProductId,
+                ProductNo = d.ProductNo,
+                ProductChtName = d.ProductChtName,
+                ItemPrice = d.ItemPrice,
+                Qty = d.Qty,
+                StockNo = d.StockNo,
+                ItemNote = d.ItemNote
+            }).ToList();
+
+            if (!string.IsNullOrEmpty(existing.SupplierId))
+            {
+                var supplier = await SupplierService.GetByIdAsync(existing.SupplierId);
+                _supplierName = supplier?.SupplierShortName;
+            }
+        }
+
+        RecalcTax();
+        _loading = false;
+    }
+
+    private async Task OnSupplierIdChanged(ChangeEventArgs e)
+    {
+        var id = e.Value?.ToString();
+        _supplierName = null;
+        if (!string.IsNullOrWhiteSpace(id))
+        {
+            var supplier = await SupplierService.GetByIdAsync(id.Trim());
+            _supplierName = supplier?.SupplierShortName;
+        }
+    }
+
+    private void AddDetailRow()
+    {
+        _details.Add(new CreatePurchaseItemDto());
+        RecalcTax();
+    }
+
+    private void RemoveDetailRow(int index)
+    {
+        if (index >= 0 && index < _details.Count)
+        {
+            _details.RemoveAt(index);
+            RecalcTax();
+        }
+    }
+
+    private void RecalcTax()
+    {
+        _subTotal = _details.Sum(d => (d.ItemPrice ?? 0) * (d.Qty ?? 0));
+
+        var taxType = int.TryParse(_taxTypeStr, out var tv) ? (TaxType)tv : TaxType.None;
+        (_taxRate, _taxAmount) = taxType switch
+        {
+            TaxType.None => (0m, 0m),
+            TaxType.Include => (0.05m, _subTotal - _subTotal / 1.05m),
+            TaxType.Exclude => (0.05m, _subTotal * 0.05m),
+            _ => (0m, 0m)
+        };
+    }
+
+    private async Task Save()
+    {
+        _errorMessage = "";
+        try
+        {
+            _dto.SupplierId = _dto.SupplierId?.Trim();
+            _dto.PurchaseDate = _purchaseDate;
+            _dto.TaxType = int.TryParse(_taxTypeStr, out var tv) ? tv : 0;
+            _dto.InvoiceType = int.TryParse(_invoiceTypeStr, out var iv) ? iv : 0;
+            _dto.Details = _details;
+
+            if (_isNew)
+            {
+                var result = await PurchaseService.CreateAsync(_dto, "operator");
+                Nav.NavigateTo($"/purchases/{result.PurchaseId}");
+            }
+            else
+            {
+                await PurchaseService.UpdateAsync(Id!, _dto);
+                Nav.NavigateTo("/purchases");
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private void Back() => Nav.NavigateTo("/purchases");
+}

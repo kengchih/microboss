@@ -1,0 +1,103 @@
+@page "/maintenance"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@using MicroBoss.Domain.Enums
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>維修領用記錄 - MicroBoss</PageTitle>
+
+<h4>維修領用記錄</h4>
+
+@if (_loading)
+{
+    <p>載入中...</p>
+}
+else if (_logs == null || _logs.Count == 0)
+{
+    <p class="text-muted">無資料</p>
+}
+else
+{
+    <table class="table table-sm table-striped table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th>記錄時間</th>
+                <th>動作類型</th>
+                <th>產品編號</th>
+                <th>條碼</th>
+                <th>數量</th>
+                <th>操作員</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var log in _logs)
+            {
+                <tr>
+                    <td>@log.LogTime.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@GetLogTypeLabel(log.LogType)</td>
+                    <td>@log.ProductNo</td>
+                    <td>@log.Barcode</td>
+                    <td>@log.Qty</td>
+                    <td>@log.OperatorId</td>
+                    <td>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteLog(log.PartLogId)">刪除</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (!string.IsNullOrEmpty(_statusMessage))
+{
+    <div class="alert @(_statusIsError ? "alert-danger" : "alert-success") alert-dismissible mt-2" role="alert">
+        @_statusMessage
+        <button type="button" class="btn-close" @onclick="() => _statusMessage = null"></button>
+    </div>
+}
+
+@code {
+    [Inject] private IInventoryService InventoryService { get; set; } = default!;
+
+    private List<MaintenanceLogDto>? _logs;
+    private bool _loading = true;
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _logs = await InventoryService.GetMaintenanceLogsAsync();
+        _loading = false;
+    }
+
+    private async Task DeleteLog(string logId)
+    {
+        try
+        {
+            await InventoryService.DeleteMaintenanceLogAsync(logId);
+            _statusMessage = "記錄已刪除";
+            _statusIsError = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"刪除失敗：{ex.Message}";
+            _statusIsError = true;
+        }
+    }
+
+    private static string GetLogTypeLabel(StockActionType type) => type switch
+    {
+        StockActionType.Take     => "維修取件",
+        StockActionType.Return   => "維修歸還",
+        StockActionType.Sale     => "銷貨",
+        StockActionType.Purchase => "進貨入庫",
+        StockActionType.Adjust   => "庫存調整",
+        _                        => type.ToString()
+    };
+}

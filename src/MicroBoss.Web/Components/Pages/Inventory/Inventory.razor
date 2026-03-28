@@ -1,0 +1,247 @@
+@page "/inventory"
+@using MicroBoss.Application.Common
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>庫存管理 - MicroBoss</PageTitle>
+
+<h4>庫存管理</h4>
+
+<div class="row mb-3 g-2 align-items-end">
+    <div class="col-auto">
+        <input class="form-control" placeholder="搜尋產品編號/名稱..." @bind="_keyword" @bind:event="oninput" @onkeyup="HandleKeyUp" />
+    </div>
+    <div class="col-auto">
+        <select class="form-select" @bind="_stockNo">
+            <option value="">全部倉庫</option>
+            @foreach (var sn in _stockNos)
+            {
+                <option value="@sn">@sn</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary btn-sm" @onclick="Search">搜尋</button>
+    </div>
+    <div class="col-auto">
+        <a class="btn btn-warning btn-sm" href="/inventory/safe-stock">安全庫存警示</a>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <p>載入中...</p>
+}
+else if (_result == null || _result.Items.Count == 0)
+{
+    <p class="text-muted">無資料</p>
+}
+else
+{
+    <table class="table table-sm table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th>產品編號</th>
+                <th>產品名稱</th>
+                <th>製造商</th>
+                <th>倉庫</th>
+                <th>庫存量</th>
+                <th>安全量</th>
+                <th>儲位</th>
+                <th>在途量</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in _result.Items)
+            {
+                var isUnderSafe = item.CurrentStockQty < item.SafeQty;
+                var rowClass = isUnderSafe ? "table-danger" : "";
+                var editKey = $"{item.ProductId}_{item.StockNo}";
+                var isEditing = _editingRows.Contains(editKey);
+
+                <tr class="@rowClass">
+                    <td>@item.ProductNo</td>
+                    <td>
+                        @item.ProductName
+                        @if (isUnderSafe)
+                        {
+                            <span class="badge bg-danger ms-1" title="低於安全庫存">!</span>
+                        }
+                    </td>
+                    <td>@item.Manufacturer</td>
+                    <td>@item.StockNo</td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <input type="number" class="form-control form-control-sm" style="width:80px"
+                                   @bind="_editQty" />
+                        }
+                        else
+                        {
+                            @item.CurrentStockQty
+                        }
+                    </td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <input type="number" class="form-control form-control-sm" style="width:80px"
+                                   @bind="_editSafeQty" />
+                        }
+                        else
+                        {
+                            @item.SafeQty
+                        }
+                    </td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <input type="text" class="form-control form-control-sm" style="width:120px"
+                                   @bind="_editLocation" />
+                        }
+                        else
+                        {
+                            @item.Location
+                        }
+                    </td>
+                    <td>@item.TransitQty</td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <button class="btn btn-success btn-sm me-1" @onclick="() => SaveRow(item)">儲存</button>
+                            <button class="btn btn-secondary btn-sm" @onclick="() => CancelEdit(editKey)">取消</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-primary btn-sm" @onclick="() => StartEdit(item, editKey)">編輯</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">共 @_result.TotalCount 筆，第 @_result.Page / @_result.TotalPages 頁</span>
+        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page <= 1)" @onclick="PrevPage">上一頁</button>
+        <button class="btn btn-outline-secondary btn-sm" disabled="@(_result.Page >= _result.TotalPages)" @onclick="NextPage">下一頁</button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_statusMessage))
+{
+    <div class="alert @(_statusIsError ? "alert-danger" : "alert-success") alert-dismissible mt-2" role="alert">
+        @_statusMessage
+        <button type="button" class="btn-close" @onclick="() => _statusMessage = null"></button>
+    </div>
+}
+
+@code {
+    [Inject] private IInventoryService InventoryService { get; set; } = default!;
+
+    private PagedResult<InventoryDto>? _result;
+    private bool _loading = true;
+    private string _keyword = "";
+    private string _stockNo = "";
+    private int _page = 1;
+    private const int PageSize = 20;
+
+    private List<string> _stockNos = new();
+    private HashSet<string> _editingRows = new();
+
+    // Inline edit state (single row at a time)
+    private string? _currentEditKey;
+    private int _editQty;
+    private int _editSafeQty;
+    private string? _editLocation;
+
+    private string? _statusMessage;
+    private bool _statusIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStockNosAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadStockNosAsync()
+    {
+        // Load all distinct StockNos for the dropdown via a broad query
+        var all = await InventoryService.QueryAsync(new InventoryQueryDto { Page = 1, PageSize = 1000 });
+        _stockNos = all.Items.Select(i => i.StockNo ?? "").Where(s => !string.IsNullOrEmpty(s)).Distinct().OrderBy(s => s).ToList();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _editingRows.Clear();
+        _currentEditKey = null;
+
+        _result = await InventoryService.QueryAsync(new InventoryQueryDto
+        {
+            Keyword = _keyword,
+            StockNo = string.IsNullOrEmpty(_stockNo) ? null : _stockNo,
+            Page = _page,
+            PageSize = PageSize
+        });
+        _loading = false;
+    }
+
+    private async Task Search()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Search();
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1) { _page--; await LoadAsync(); }
+    }
+
+    private async Task NextPage()
+    {
+        if (_result != null && _page < _result.TotalPages) { _page++; await LoadAsync(); }
+    }
+
+    private void StartEdit(InventoryDto item, string editKey)
+    {
+        // Cancel previous edit if any
+        if (_currentEditKey != null)
+            _editingRows.Remove(_currentEditKey);
+
+        _currentEditKey = editKey;
+        _editQty = item.CurrentStockQty;
+        _editSafeQty = item.SafeQty;
+        _editLocation = item.Location;
+        _editingRows.Add(editKey);
+    }
+
+    private void CancelEdit(string editKey)
+    {
+        _editingRows.Remove(editKey);
+        _currentEditKey = null;
+    }
+
+    private async Task SaveRow(InventoryDto item)
+    {
+        try
+        {
+            await InventoryService.UpdateStockAsync(item.ProductId, item.StockNo!, _editQty, _editSafeQty, _editLocation);
+            _statusMessage = $"已更新庫存：{item.ProductNo}";
+            _statusIsError = false;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"更新失敗：{ex.Message}";
+            _statusIsError = true;
+        }
+    }
+}

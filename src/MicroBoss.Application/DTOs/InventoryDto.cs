@@ -15,6 +15,7 @@ public class InventoryDto
     public int SafeQty { get; set; }
     public int CurrentStockQty { get; set; }
     public int TransitQty { get; set; }
+    public string? Location { get; set; }
 }
 
 public class InventoryQueryDto

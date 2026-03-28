@@ -1,0 +1,387 @@
+@page "/orders/{Id}"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@using MicroBoss.Domain.Enums
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(_isNew ? "新增訂單" : "編輯訂單") - MicroBoss</PageTitle>
+
+<h4>@(_isNew ? "新增訂單" : "編輯訂單") @(_isNew ? "" : $"  {Id}")</h4>
+
+@if (_loading)
+{
+    <p>載入中...</p>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="alert alert-success">@_successMessage</div>
+    }
+
+    <div class="card mb-3">
+        <div class="card-header">訂單表頭</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">客戶編號</label>
+                    <input class="form-control" @bind="_dto.CustomerId" @bind:after="OnCustomerIdChanged" placeholder="輸入客戶編號" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">客戶名稱</label>
+                    <input class="form-control" @bind="_dto.CustomerName" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">訂單日期 <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" @bind="_dto.OrderDate" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">稅別</label>
+                    <select class="form-select" @bind="_taxTypeStr" @bind:after="RecalcTotals">
+                        <option value="0">無稅</option>
+                        <option value="1">稅內含</option>
+                        <option value="2">稅外加</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">發票類型</label>
+                    <select class="form-select" @bind="_invoiceTypeStr">
+                        <option value="0">無</option>
+                        <option value="2">二聯式</option>
+                        <option value="3">三聯式</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">預計出貨日</label>
+                    <input type="date" class="form-control" @bind="_dto.DeliveryDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">付款方式</label>
+                    <input class="form-control" @bind="_dto.PaymentMethod" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">送貨地址</label>
+                    <input class="form-control" @bind="_dto.DeliveryAddress" />
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">統一編號</label>
+                    <input class="form-control" @bind="_dto.UniteNo" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">發票抬頭</label>
+                    <input class="form-control" @bind="_dto.InvoiceTitle" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">聯絡窗口</label>
+                    <input class="form-control" @bind="_dto.ContactWindow" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">郵遞區號</label>
+                    <input class="form-control" @bind="_dto.DeliveryAddressZip" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">送貨方式</label>
+                    <input class="form-control" @bind="_dto.DeliveryMethod" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">訂單備註</label>
+                    <textarea class="form-control" rows="2" @bind="_dto.OrderNote"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>訂單明細</span>
+            <button class="btn btn-outline-primary btn-sm" @onclick="AddDetailRow">新增明細</button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:130px;">產品代碼</th>
+                        <th style="width:100px;">產品編號</th>
+                        <th>產品名稱</th>
+                        <th style="width:80px;">單位</th>
+                        <th style="width:70px;">數量</th>
+                        <th style="width:100px;">單價</th>
+                        <th style="width:100px;">折扣</th>
+                        <th style="width:110px;">小計</th>
+                        <th style="width:50px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (detail, index) in _details.Select((d, i) => (d, i)))
+                    {
+                        <tr>
+                            <td><input class="form-control form-control-sm" @bind="detail.ProductId" /></td>
+                            <td><input class="form-control form-control-sm" @bind="detail.ProductNo" /></td>
+                            <td><input class="form-control form-control-sm" @bind="detail.ProductName" /></td>
+                            <td><input class="form-control form-control-sm" @bind="detail.OrderUnit" /></td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm"
+                                       @bind="detail.OrderQty" @bind:after="RecalcTotals" min="1" />
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm"
+                                       @bind="detail.ItemPrice" @bind:after="RecalcTotals" />
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm"
+                                       @bind="detail.ItemDiscount" @bind:after="RecalcTotals" />
+                            </td>
+                            <td class="text-end align-middle">
+                                @((detail.OrderQty * detail.ItemPrice - detail.ItemDiscount).ToString("N2"))
+                            </td>
+                            <td class="text-center align-middle">
+                                <button class="btn btn-outline-danger btn-sm"
+                                        @onclick="() => RemoveDetailRow(index)">×</button>
+                            </td>
+                        </tr>
+                    }
+                    @if (_details.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">尚無明細，請點選「新增明細」</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <div class="row justify-content-end">
+                <div class="col-md-4">
+                    <dl class="row mb-0">
+                        <dt class="col-6">小計</dt>
+                        <dd class="col-6 text-end">@_subTotal.ToString("N2")</dd>
+                        <dt class="col-6">折扣</dt>
+                        <dd class="col-6 text-end">@_totalDiscount.ToString("N2")</dd>
+                        <dt class="col-6">稅額</dt>
+                        <dd class="col-6 text-end">@_taxAmount.ToString("N2")</dd>
+                        <dt class="col-6 fw-bold">合計</dt>
+                        <dd class="col-6 text-end fw-bold">@_total.ToString("N2")</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+            @(_saving ? "儲存中..." : "儲存")
+        </button>
+        <button class="btn btn-secondary" @onclick="GoBack">返回</button>
+        @if (!_isNew)
+        {
+            <button class="btn btn-success" @onclick="Confirm" disabled="@_saving">確認訂單</button>
+            <button class="btn btn-warning" @onclick="Invalidate" disabled="@_saving">作廢</button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    [Inject] private IOrderService OrderService { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private bool _isNew;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    private CreateOrderDto _dto = new();
+    private List<CreateOrderDetailDto> _details = new();
+    private string _taxTypeStr = "0";
+    private string _invoiceTypeStr = "0";
+
+    // Calculated totals
+    private decimal _subTotal;
+    private decimal _totalDiscount;
+    private decimal _taxAmount;
+    private decimal _total;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isNew = string.Equals(Id, "new", StringComparison.OrdinalIgnoreCase);
+
+        if (!_isNew)
+        {
+            var existing = await OrderService.GetByIdAsync(Id);
+            if (existing == null)
+            {
+                _errorMessage = "找不到此訂單";
+                _loading = false;
+                return;
+            }
+
+            _dto = new CreateOrderDto
+            {
+                CustomerId = existing.CustomerId,
+                CustomerName = existing.CustomerName,
+                OrderDate = existing.OrderDate,
+                TaxType = existing.TaxType.HasValue ? (int)existing.TaxType.Value : 0,
+                InvoiceType = existing.InvoiceType.HasValue ? (int)existing.InvoiceType.Value : 0,
+                DeliveryDate = existing.DeliveryDate,
+                PaymentMethod = existing.PaymentMethod,
+                DeliveryAddress = existing.DeliveryAddress,
+                DeliveryMethod = existing.DeliveryMethod,
+                OrderNote = existing.OrderNote,
+                PrePayAmount = existing.PrePayAmount
+            };
+
+            _taxTypeStr = (_dto.TaxType ?? 0).ToString();
+            _invoiceTypeStr = (_dto.InvoiceType ?? 0).ToString();
+
+            _details = existing.OrderDetails.Select(d => new CreateOrderDetailDto
+            {
+                ProductId = d.ProductId,
+                ProductNo = d.ProductNo,
+                ProductName = d.ProductName,
+                BaseUnit = d.BaseUnit,
+                OrderUnit = d.OrderUnit,
+                OrderQty = d.OrderQty,
+                ItemPrice = d.ItemPrice,
+                ItemDiscount = d.ItemDiscount,
+                ItemNote = d.ItemNote
+            }).ToList();
+        }
+        else
+        {
+            _dto.OrderDate = DateTime.Today;
+        }
+
+        RecalcTotals();
+        _loading = false;
+    }
+
+    private Task OnCustomerIdChanged()
+    {
+        // Could be extended to auto-lookup customer name from a service
+        return Task.CompletedTask;
+    }
+
+    private void AddDetailRow()
+    {
+        _details.Add(new CreateOrderDetailDto { OrderQty = 1 });
+        RecalcTotals();
+    }
+
+    private void RemoveDetailRow(int index)
+    {
+        if (index >= 0 && index < _details.Count)
+        {
+            _details.RemoveAt(index);
+            RecalcTotals();
+        }
+    }
+
+    private void RecalcTotals()
+    {
+        _totalDiscount = _details.Sum(d => d.ItemDiscount);
+        _subTotal = _details.Sum(d => d.OrderQty * d.ItemPrice - d.ItemDiscount);
+
+        int taxTypeVal = int.TryParse(_taxTypeStr, out var tv) ? tv : 0;
+        var taxType = (TaxType)taxTypeVal;
+
+        switch (taxType)
+        {
+            case TaxType.Include:
+                _taxAmount = Math.Round(_subTotal - _subTotal / 1.05m, 2);
+                _total = _subTotal;
+                break;
+            case TaxType.Exclude:
+                _taxAmount = Math.Round(_subTotal * 0.05m, 2);
+                _total = _subTotal + _taxAmount;
+                break;
+            default:
+                _taxAmount = 0m;
+                _total = _subTotal;
+                break;
+        }
+    }
+
+    private async Task Save()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+        _saving = true;
+
+        try
+        {
+            _dto.TaxType = int.TryParse(_taxTypeStr, out var tv) ? tv : 0;
+            _dto.InvoiceType = int.TryParse(_invoiceTypeStr, out var iv) ? iv : 0;
+            _dto.OrderDetails = _details;
+
+            if (_isNew)
+            {
+                var result = await OrderService.CreateAsync(_dto, string.Empty);
+                _successMessage = "新增成功";
+                Nav.NavigateTo($"/orders/{result.OrderNo}");
+            }
+            else
+            {
+                await OrderService.UpdateAsync(Id, _dto);
+                _successMessage = "儲存成功";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task Confirm()
+    {
+        _errorMessage = null;
+        _saving = true;
+        try
+        {
+            await OrderService.ConfirmAsync(Id);
+            _successMessage = "訂單已確認（未付款）";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task Invalidate()
+    {
+        _errorMessage = null;
+        _saving = true;
+        try
+        {
+            await OrderService.InvalidateAsync(Id);
+            _successMessage = "訂單已作廢";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void GoBack() => Nav.NavigateTo("/orders");
+}
