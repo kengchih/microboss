@@ -29,6 +29,18 @@ public static class IdentitySetup
             options.AccessDeniedPath = "/access-denied";
             options.ExpireTimeSpan = TimeSpan.FromHours(8);
             options.SlidingExpiration = true;
+            options.Events.OnRedirectToLogin = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api"))
+                {
+                    context.Response.StatusCode = 401;
+                }
+                else if (!context.Request.Path.StartsWithSegments("/login"))
+                {
+                    context.Response.Redirect(context.RedirectUri);
+                }
+                return Task.CompletedTask;
+            };
         });
 
         return services;
