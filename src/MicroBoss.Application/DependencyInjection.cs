@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IPurchaseService, PurchaseService>();
         services.AddScoped<IAccountsReceivableService, AccountsReceivableService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IBoschImportService, BoschImportService>();
         return services;
     }
 }

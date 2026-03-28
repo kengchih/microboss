@@ -1,7 +1,112 @@
-﻿@page "/"
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>首頁 - MicroBoss</PageTitle>
 
-<h1>Hello, world!</h1>
+<AuthorizeView>
+    <Authorized>
+        <h4>歡迎，@context.User.Identity?.Name</h4>
+        <p class="text-muted">@DateTime.Today.ToString("yyyy 年 MM 月 dd 日")</p>
+    </Authorized>
+</AuthorizeView>
 
-Welcome to your new app.
+<div class="row g-3 mt-2">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-primary h-100">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">本月訂單數</div>
+                        <div class="fs-2 fw-bold text-primary">—</div>
+                    </div>
+                    <span class="bi bi-cart3 fs-2 text-primary opacity-50"></span>
+                </div>
+                <div class="mt-2">
+                    <a href="/orders" class="btn btn-sm btn-outline-primary">查看訂單</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-success h-100">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">本月營收</div>
+                        <div class="fs-2 fw-bold text-success">—</div>
+                    </div>
+                    <span class="bi bi-currency-dollar fs-2 text-success opacity-50"></span>
+                </div>
+                <div class="mt-2">
+                    <a href="/ar" class="btn btn-sm btn-outline-success">應收帳款</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-warning h-100">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">待處理訂單</div>
+                        <div class="fs-2 fw-bold text-warning">—</div>
+                    </div>
+                    <span class="bi bi-hourglass-split fs-2 text-warning opacity-50"></span>
+                </div>
+                <div class="mt-2">
+                    <a href="/orders" class="btn btn-sm btn-outline-warning">查看待處理</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-danger h-100">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">安全庫存警示</div>
+                        <div class="fs-2 fw-bold text-danger">—</div>
+                    </div>
+                    <span class="bi bi-exclamation-triangle fs-2 text-danger opacity-50"></span>
+                </div>
+                <div class="mt-2">
+                    <a href="/inventory/safe-stock" class="btn btn-sm btn-outline-danger">查看庫存</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">快速操作</div>
+            <div class="card-body d-flex flex-wrap gap-2">
+                <a href="/pos" class="btn btn-primary">POS 銷售</a>
+                <a href="/orders/new" class="btn btn-outline-primary">新增訂單</a>
+                <a href="/purchases" class="btn btn-outline-secondary">採購管理</a>
+                <a href="/inventory" class="btn btn-outline-secondary">庫存管理</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">系統資訊</div>
+            <div class="card-body text-muted">
+                <p class="mb-1"><strong>系統</strong>：MicroBoss ERP</p>
+                <p class="mb-1"><strong>版本</strong>：v1.0.0</p>
+                <p class="mb-0"><strong>日期</strong>：@DateTime.Today.ToString("yyyy/MM/dd")</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Dashboard — stats cards are static placeholders for now.
+    // Actual data integration (order counts, revenue, etc.) can be wired up in a future phase.
+}

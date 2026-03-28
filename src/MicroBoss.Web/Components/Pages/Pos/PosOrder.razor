@@ -1,0 +1,277 @@
+@page "/pos"
+@using MicroBoss.Application.Common
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>POS 銷售 - MicroBoss</PageTitle>
+
+<h4>POS 銷售</h4>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <label class="form-label mb-1">客戶</label>
+        <select class="form-select" @bind="_customerId">
+            <option value="">-- 選擇客戶 --</option>
+            @foreach (var c in _customers)
+            {
+                <option value="@c.CustomerId">@c.CustomerName</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-5">
+        <label class="form-label mb-1">產品編號 / 條碼</label>
+        <div class="input-group">
+            <input class="form-control" placeholder="輸入產品編號或條碼後按 Enter"
+                   @bind="_productSearch" @bind:event="oninput"
+                   @onkeyup="OnProductSearchKeyUp" />
+            <button class="btn btn-outline-secondary" @onclick="AddProduct">加入</button>
+        </div>
+        @if (!string.IsNullOrEmpty(_searchError))
+        {
+            <div class="text-danger small mt-1">@_searchError</div>
+        }
+    </div>
+    <div class="col-md-3">
+        <label class="form-label mb-1">訂單日期</label>
+        <input type="date" class="form-control" @bind="_orderDate" />
+    </div>
+</div>
+
+@if (_cartItems.Count > 0)
+{
+    <table class="table table-sm table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th>產品編號</th>
+                <th>產品名稱</th>
+                <th style="width:120px;">數量</th>
+                <th style="width:120px;">單價</th>
+                <th style="width:110px;">小計</th>
+                <th style="width:60px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in _cartItems)
+            {
+                <tr>
+                    <td>@item.ProductNo</td>
+                    <td>@item.ProductName</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <button class="btn btn-outline-secondary" @onclick="() => ChangeQty(item, -1)">-</button>
+                            <input type="number" class="form-control text-center" min="1"
+                                   @bind="item.OrderQty" @bind:event="oninput"
+                                   @onchange="() => RecalcItem(item)" style="width:50px;" />
+                            <button class="btn btn-outline-secondary" @onclick="() => ChangeQty(item, 1)">+</button>
+                        </div>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm text-end" min="0" step="0.01"
+                               @bind="item.ItemPrice" @bind:event="oninput"
+                               @onchange="() => RecalcItem(item)" />
+                    </td>
+                    <td class="text-end">@item.ItemAmount.ToString("N2")</td>
+                    <td class="text-center">
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveItem(item)">✕</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="row justify-content-end">
+        <div class="col-md-4">
+            <table class="table table-sm">
+                <tr>
+                    <td class="text-end">小計</td>
+                    <td class="text-end fw-bold" style="width:120px;">@_subTotal.ToString("N2")</td>
+                </tr>
+                <tr>
+                    <td class="text-end">稅額 (5%)</td>
+                    <td class="text-end">@_tax.ToString("N2")</td>
+                </tr>
+                <tr class="table-active">
+                    <td class="text-end fw-bold">合計</td>
+                    <td class="text-end fw-bold fs-5">@_total.ToString("N2")</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-success" @onclick="CompleteOrder" disabled="@_busy">完成訂單</button>
+        <button class="btn btn-outline-secondary" @onclick="ClearCart" disabled="@_busy">清空購物車</button>
+    </div>
+}
+else
+{
+    <div class="text-center text-muted py-5">
+        <p>購物車是空的，請搜尋產品加入</p>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="alert @(_isError ? "alert-danger" : "alert-success") mt-3 alert-dismissible">
+        @_message
+        <button type="button" class="btn-close" @onclick="() => _message = null"></button>
+    </div>
+}
+
+@code {
+    [Inject] private IOrderService OrderService { get; set; } = default!;
+    [Inject] private IProductService ProductService { get; set; } = default!;
+    [Inject] private ICustomerService CustomerService { get; set; } = default!;
+    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+
+    private List<CustomerDto> _customers = new();
+    private string _customerId = string.Empty;
+    private string _productSearch = string.Empty;
+    private string? _searchError;
+    private DateTime _orderDate = DateTime.Today;
+    private bool _busy;
+    private string? _message;
+    private bool _isError;
+
+    private List<CartItem> _cartItems = new();
+
+    private decimal _subTotal => _cartItems.Sum(i => i.ItemAmount);
+    private decimal _tax => Math.Round(_subTotal * 0.05m, 0);
+    private decimal _total => _subTotal + _tax;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await CustomerService.QueryAsync(new CustomerQueryDto { Page = 1, PageSize = 500 });
+        _customers = result.Items;
+    }
+
+    private async Task OnProductSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await AddProduct();
+    }
+
+    private async Task AddProduct()
+    {
+        _searchError = null;
+        var keyword = _productSearch.Trim();
+        if (string.IsNullOrWhiteSpace(keyword)) return;
+
+        var product = await ProductService.GetByNoAsync(keyword);
+        if (product == null)
+        {
+            _searchError = $"找不到產品：{keyword}";
+            return;
+        }
+
+        var existing = _cartItems.FirstOrDefault(i => i.ProductId == product.ProductId);
+        if (existing != null)
+        {
+            existing.OrderQty++;
+            RecalcItem(existing);
+        }
+        else
+        {
+            var unitPrice = product.CostData?.UnitPriceA ?? 0;
+            var item = new CartItem
+            {
+                ProductId = product.ProductId,
+                ProductNo = product.ProductNo ?? string.Empty,
+                ProductName = product.ProductName ?? string.Empty,
+                BaseUnit = product.BaseUnit,
+                OrderQty = 1,
+                ItemPrice = unitPrice
+            };
+            RecalcItem(item);
+            _cartItems.Add(item);
+        }
+
+        _productSearch = string.Empty;
+    }
+
+    private void ChangeQty(CartItem item, int delta)
+    {
+        item.OrderQty = Math.Max(1, item.OrderQty + delta);
+        RecalcItem(item);
+    }
+
+    private void RecalcItem(CartItem item)
+    {
+        if (item.OrderQty < 1) item.OrderQty = 1;
+        item.ItemAmount = item.OrderQty * item.ItemPrice;
+    }
+
+    private void RemoveItem(CartItem item) => _cartItems.Remove(item);
+    private void ClearCart() => _cartItems.Clear();
+
+    private async Task CompleteOrder()
+    {
+        if (_cartItems.Count == 0)
+        {
+            _message = "購物車是空的";
+            _isError = true;
+            return;
+        }
+
+        _busy = true;
+        _message = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var operatorId = authState.User.Identity?.Name ?? "system";
+
+            var selectedCustomer = _customers.FirstOrDefault(c => c.CustomerId == _customerId);
+
+            var dto = new CreateOrderDto
+            {
+                CustomerId = string.IsNullOrEmpty(_customerId) ? null : _customerId,
+                CustomerName = selectedCustomer?.CustomerName,
+                OrderDate = _orderDate,
+                TaxType = 1, // 含稅
+                InvoiceType = 1,
+                PrePayAmount = 0,
+                OrderDetails = _cartItems.Select(i => new CreateOrderDetailDto
+                {
+                    ProductId = i.ProductId,
+                    ProductNo = i.ProductNo,
+                    ProductName = i.ProductName,
+                    BaseUnit = i.BaseUnit,
+                    OrderUnit = i.BaseUnit,
+                    OrderQty = i.OrderQty,
+                    ItemPrice = i.ItemPrice,
+                    ItemDiscount = 0
+                }).ToList()
+            };
+
+            var order = await OrderService.CreateAsync(dto, operatorId);
+            _message = $"訂單建立成功！訂單號：{order.OrderNo}";
+            _isError = false;
+            ClearCart();
+            _customerId = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _message = $"建立訂單失敗：{ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private class CartItem
+    {
+        public string ProductId { get; set; } = string.Empty;
+        public string ProductNo { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public string? BaseUnit { get; set; }
+        public int OrderQty { get; set; } = 1;
+        public decimal ItemPrice { get; set; }
+        public decimal ItemAmount { get; set; }
+    }
+}

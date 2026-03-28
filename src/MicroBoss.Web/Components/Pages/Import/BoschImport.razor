@@ -1,0 +1,196 @@
+@page "/import/bosch"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+<PageTitle>Bosch 零件資料匯入 - MicroBoss</PageTitle>
+
+<h4>Bosch 零件資料匯入</h4>
+<p class="text-muted">請貼上以 Tab 分隔的資料（欄位順序：PN、PG、Class、TWD、ENDesc、CNDesc、Successor）</p>
+
+<div class="mb-3">
+    <label class="form-label">貼上資料（Tab 分隔）</label>
+    <textarea class="form-control font-monospace" rows="10" @bind="_rawData"
+              placeholder="PN&#9;PG&#9;Class&#9;TWD&#9;ENDesc&#9;CNDesc&#9;Successor"></textarea>
+</div>
+
+<div class="mb-3 d-flex gap-2">
+    <button class="btn btn-outline-secondary" @onclick="ParseData" disabled="@_busy">解析預覽</button>
+    <button class="btn btn-primary" @onclick="Import" disabled="@(_busy || _preview.Count == 0)">匯入</button>
+    <button class="btn btn-danger" @onclick="ConfirmReset" disabled="@_busy">清除全部資料</button>
+</div>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="alert @(_isError ? "alert-danger" : "alert-success") alert-dismissible">
+        @_message
+        <button type="button" class="btn-close" @onclick="() => _message = null"></button>
+    </div>
+}
+
+@if (_preview.Count > 0)
+{
+    <h6>預覽（共 @_preview.Count 筆）</h6>
+    <div style="max-height:400px;overflow-y:auto;">
+        <table class="table table-sm table-bordered table-hover">
+            <thead class="table-light sticky-top">
+                <tr>
+                    <th>PN</th>
+                    <th>PG</th>
+                    <th>Class</th>
+                    <th>TWD</th>
+                    <th>ENDesc</th>
+                    <th>CNDesc</th>
+                    <th>Successor</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in _preview)
+                {
+                    <tr>
+                        <td>@item.PN</td>
+                        <td>@item.PG</td>
+                        <td>@item.Class</td>
+                        <td>@item.TWD</td>
+                        <td>@item.ENDesc</td>
+                        <td>@item.CNDesc</td>
+                        <td>@item.Successor</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (_showConfirmReset)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">確認清除</h5>
+                    <button type="button" class="btn-close" @onclick="CancelReset"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger">確定要清除所有 Bosch 零件資料嗎？此操作無法復原。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CancelReset">取消</button>
+                    <button class="btn btn-danger" @onclick="DoReset">確認清除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private IBoschImportService BoschImportService { get; set; } = default!;
+
+    private string? _rawData;
+    private List<SpSourceDataDto> _preview = new();
+    private bool _busy;
+    private bool _showConfirmReset;
+    private string? _message;
+    private bool _isError;
+
+    private void ParseData()
+    {
+        _preview.Clear();
+        _message = null;
+
+        if (string.IsNullOrWhiteSpace(_rawData))
+        {
+            _message = "請先貼入資料";
+            _isError = true;
+            return;
+        }
+
+        var lines = _rawData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        int skipped = 0;
+
+        foreach (var line in lines)
+        {
+            var cols = line.TrimEnd('\r').Split('\t');
+            if (cols.Length < 1 || string.IsNullOrWhiteSpace(cols[0]))
+            {
+                skipped++;
+                continue;
+            }
+
+            var item = new SpSourceDataDto
+            {
+                PN = cols.Length > 0 ? cols[0].Trim() : string.Empty,
+                PG = cols.Length > 1 ? NullIfEmpty(cols[1]) : null,
+                Class = cols.Length > 2 ? NullIfEmpty(cols[2]) : null,
+                TWD = cols.Length > 3 && int.TryParse(cols[3].Trim(), out var twd) ? twd : null,
+                ENDesc = cols.Length > 4 ? NullIfEmpty(cols[4]) : null,
+                CNDesc = cols.Length > 5 ? NullIfEmpty(cols[5]) : null,
+                Successor = cols.Length > 6 ? NullIfEmpty(cols[6]) : null
+            };
+
+            if (!string.IsNullOrWhiteSpace(item.PN))
+                _preview.Add(item);
+            else
+                skipped++;
+        }
+
+        _message = $"解析完成：{_preview.Count} 筆有效，{skipped} 筆略過";
+        _isError = false;
+    }
+
+    private async Task Import()
+    {
+        if (_preview.Count == 0) return;
+        _busy = true;
+        _message = null;
+
+        try
+        {
+            await BoschImportService.ImportAsync(_preview);
+            _message = $"成功匯入 {_preview.Count} 筆資料";
+            _isError = false;
+            _preview.Clear();
+            _rawData = null;
+        }
+        catch (Exception ex)
+        {
+            _message = $"匯入失敗：{ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ConfirmReset() => _showConfirmReset = true;
+    private void CancelReset() => _showConfirmReset = false;
+
+    private async Task DoReset()
+    {
+        _showConfirmReset = false;
+        _busy = true;
+        _message = null;
+
+        try
+        {
+            await BoschImportService.ResetAsync();
+            _message = "所有 Bosch 零件資料已清除";
+            _isError = false;
+            _preview.Clear();
+        }
+        catch (Exception ex)
+        {
+            _message = $"清除失敗：{ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string? NullIfEmpty(string? s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+}
