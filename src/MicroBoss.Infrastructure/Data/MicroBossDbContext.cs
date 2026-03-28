@@ -1,6 +1,7 @@
 using MicroBoss.Domain.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace MicroBoss.Infrastructure.Data;
 
@@ -28,9 +29,15 @@ public class MicroBossDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<RowIndex> RowIndices => Set<RowIndex>();
     public DbSet<SpSourceData> SpSourceDatas => Set<SpSourceData>();
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ConfigureWarnings(w =>
+            w.Ignore(RelationalEventId.PendingModelChangesWarning));
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder); // IMPORTANT: must call base for Identity tables
+        base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MicroBossDbContext).Assembly);
     }
 }
