@@ -1,0 +1,323 @@
+@page "/ar/{Id:int}"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@using MicroBoss.Domain.Enums
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>應收帳款明細 - MicroBoss</PageTitle>
+
+@if (_loading)
+{
+    <p>載入中...</p>
+}
+else if (_ar == null)
+{
+    <div class="alert alert-danger">找不到此應收帳款記錄</div>
+    <button class="btn btn-secondary" @onclick="GoBack">返回</button>
+}
+else
+{
+    <div class="d-flex align-items-center mb-3 gap-2">
+        <h4 class="mb-0">應收帳款明細 @_ar.Number</h4>
+        <span class="badge @(_ar.Status == AccountsReceivableStatus.Paid ? "bg-success" : "bg-warning text-dark") ms-2">
+            @GetStatusText(_ar.Status)
+        </span>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="alert alert-success">@_successMessage</div>
+    }
+
+    <!-- Header Info -->
+    <div class="card mb-3">
+        <div class="card-header">基本資料</div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">單號</label>
+                    <div class="form-control-plaintext">@_ar.Number</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">結帳日期</label>
+                    <div class="form-control-plaintext">@_ar.SettleDate.ToString("yyyy/MM/dd")</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">客戶編號</label>
+                    <div class="form-control-plaintext">@_ar.CustomerId</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">狀態</label>
+                    <div class="form-control-plaintext">@GetStatusText(_ar.Status)</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">訂單品項金額</label>
+                    <div class="form-control-plaintext text-end">@_ar.OrderItemAmount.ToString("N2")</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">稅額</label>
+                    <div class="form-control-plaintext text-end">@_ar.OrderTaxAmount.ToString("N2")</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">訂單合計</label>
+                    <div class="form-control-plaintext text-end">@_ar.OrderTotalAmount.ToString("N2")</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">應收總額</label>
+                    <div class="form-control-plaintext text-end fw-bold">@_ar.TotalAmount.ToString("N2")</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">實收金額</label>
+                    <div class="form-control-plaintext text-end text-success fw-bold">@_ar.ActualAmount.ToString("N2")</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">差額</label>
+                    <div class="form-control-plaintext text-end @((_ar.TotalAmount - _ar.ActualAmount) > 0 ? "text-danger" : "text-success") fw-bold">
+                        @((_ar.TotalAmount - _ar.ActualAmount).ToString("N2"))
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Table -->
+    <div class="card mb-3">
+        <div class="card-header">訂單明細</div>
+        <div class="card-body p-0">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>類型</th>
+                        <th>訂單號</th>
+                        <th class="text-end">金額</th>
+                        <th>備註</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var detail in _ar.Details)
+                    {
+                        <tr>
+                            <td>@GetDetailTypeText(detail.Type)</td>
+                            <td>@detail.OrderNo</td>
+                            <td class="text-end">@detail.Amount.ToString("N2")</td>
+                            <td>@detail.Note</td>
+                        </tr>
+                    }
+                    @if (_ar.Details.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted">無明細資料</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Postings Table -->
+    <div class="card mb-3">
+        <div class="card-header">收款紀錄</div>
+        <div class="card-body p-0">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>收款日期</th>
+                        <th>類型</th>
+                        <th class="text-end">金額</th>
+                        <th>帳號</th>
+                        <th>銀行</th>
+                        <th>支票號碼</th>
+                        <th>備註</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var posting in _ar.Postings)
+                    {
+                        <tr>
+                            <td>@posting.PostingDate.ToString("yyyy/MM/dd")</td>
+                            <td>@GetPostingTypeText(posting.Type)</td>
+                            <td class="text-end">@posting.Amount.ToString("N2")</td>
+                            <td>@posting.Account</td>
+                            <td>@posting.Bank</td>
+                            <td>@posting.CheckNumber</td>
+                            <td>@posting.Note</td>
+                        </tr>
+                    }
+                    @if (_ar.Postings.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center text-muted">無收款記錄</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add Posting Form -->
+    @if (_ar.Status == AccountsReceivableStatus.Unpaid)
+    {
+        <div class="card mb-3">
+            <div class="card-header">新增收款</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">收款日期 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" @bind="_postingDto.PostingDate" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">收款類型 <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="_postingTypeStr">
+                            <option value="0">現金</option>
+                            <option value="1">匯款</option>
+                            <option value="2">支票</option>
+                            <option value="8">調帳</option>
+                            <option value="9">其他</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">金額 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" @bind="_postingDto.Amount" step="0.01" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">帳號</label>
+                        <input class="form-control" @bind="_postingDto.Account" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">銀行</label>
+                        <input class="form-control" @bind="_postingDto.Bank" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">支票號碼</label>
+                        <input class="form-control" @bind="_postingDto.CheckNumber" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">支票日期</label>
+                        <input type="date" class="form-control" @bind="_postingDto.CheckDate" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">備註</label>
+                        <input class="form-control" @bind="_postingDto.Note" />
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary" @onclick="AddPosting" disabled="@_saving">
+                            @(_saving ? "儲存中..." : "新增收款")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex gap-2 mt-2">
+        <button class="btn btn-secondary" @onclick="GoBack">返回</button>
+        @if (_ar.Status == AccountsReceivableStatus.Unpaid)
+        {
+            <button class="btn btn-success" @onclick="Close" disabled="@_saving">結帳</button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    [Inject] private IAccountsReceivableService ArService { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private bool _loading = true;
+    private bool _saving;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private AccountsReceivableDto? _ar;
+
+    private CreateAccountsReceivablePostingDto _postingDto = new()
+    {
+        PostingDate = DateTime.Today
+    };
+    private string _postingTypeStr = "0";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        _ar = await ArService.GetByIdAsync(Id);
+        _loading = false;
+    }
+
+    private async Task AddPosting()
+    {
+        _errorMessage = null;
+        _successMessage = null;
+        _saving = true;
+
+        try
+        {
+            _postingDto.Type = int.TryParse(_postingTypeStr, out var t) ? t : 0;
+            await ArService.AddPostingAsync(Id, _postingDto, string.Empty);
+            _successMessage = "收款記錄新增成功";
+            _postingDto = new CreateAccountsReceivablePostingDto { PostingDate = DateTime.Today };
+            _postingTypeStr = "0";
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        _errorMessage = null;
+        _saving = true;
+
+        try
+        {
+            await ArService.CloseAsync(Id);
+            _successMessage = "已結帳";
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void GoBack() => Nav.NavigateTo("/ar");
+
+    private static string GetStatusText(AccountsReceivableStatus status) => status switch
+    {
+        AccountsReceivableStatus.Unpaid => "未結帳",
+        AccountsReceivableStatus.Paid => "已結帳",
+        _ => status.ToString()
+    };
+
+    private static string GetDetailTypeText(AccountsReceivableType type) => type switch
+    {
+        AccountsReceivableType.Order => "訂單",
+        AccountsReceivableType.Other => "其他",
+        _ => type.ToString()
+    };
+
+    private static string GetPostingTypeText(AccountsReceivablePostingType type) => type switch
+    {
+        AccountsReceivablePostingType.Cash => "現金",
+        AccountsReceivablePostingType.Remittance => "匯款",
+        AccountsReceivablePostingType.Check => "支票",
+        AccountsReceivablePostingType.Adjustment => "調帳",
+        AccountsReceivablePostingType.Other => "其他",
+        _ => type.ToString()
+    };
+}
