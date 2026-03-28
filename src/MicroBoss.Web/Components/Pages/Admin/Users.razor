@@ -1,0 +1,262 @@
+@page "/admin/users"
+@using MicroBoss.Application.DTOs
+@using MicroBoss.Application.Interfaces
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+<PageTitle>使用者管理 - MicroBoss</PageTitle>
+
+<h4>使用者管理</h4>
+
+<div class="mb-3">
+    <button class="btn btn-primary btn-sm" @onclick="ShowCreateForm">新增使用者</button>
+</div>
+
+@if (_accounts == null)
+{
+    <p>載入中...</p>
+}
+else
+{
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>帳號</th>
+                <th>姓名</th>
+                <th>Email</th>
+                <th>角色</th>
+                <th>啟用</th>
+                <th>最後登入</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var account in _accounts)
+            {
+                <tr>
+                    <td>@account.Id</td>
+                    <td>@account.UserName</td>
+                    <td>@account.Email</td>
+                    <td>@account.RoleName</td>
+                    <td>@(account.IsEnabled ? "是" : "否")</td>
+                    <td>@account.LastLoginTime?.ToString("yyyy/MM/dd HH:mm")</td>
+                    <td>
+                        <button class="btn btn-outline-primary btn-sm" @onclick="() => ShowEditForm(account)">編輯</button>
+                        <button class="btn btn-outline-warning btn-sm" @onclick="() => ShowResetPassword(account)">重設密碼</button>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteAccount(account)">刪除</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_showForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_isEditing ? "編輯使用者" : "新增使用者")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_formError))
+                    {
+                        <div class="alert alert-danger">@_formError</div>
+                    }
+                    @if (!_isEditing)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">帳號</label>
+                            <input class="form-control" @bind="_createDto.UserId" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">密碼</label>
+                            <input type="password" class="form-control" @bind="_createDto.Password" />
+                        </div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">姓名</label>
+                        @if (_isEditing)
+                        {
+                            <input class="form-control" @bind="_updateDto.UserName" />
+                        }
+                        else
+                        {
+                            <input class="form-control" @bind="_createDto.UserName" />
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        @if (_isEditing)
+                        {
+                            <input class="form-control" @bind="_updateDto.Email" />
+                        }
+                        else
+                        {
+                            <input class="form-control" @bind="_createDto.Email" />
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">角色</label>
+                        @if (_isEditing)
+                        {
+                            <select class="form-select" @bind="_updateDto.RoleName">
+                                <option value="">請選擇</option>
+                                @if (_roles != null)
+                                {
+                                    @foreach (var role in _roles)
+                                    {
+                                        <option value="@role.Name">@role.Name</option>
+                                    }
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <select class="form-select" @bind="_createDto.RoleName">
+                                <option value="">請選擇</option>
+                                @if (_roles != null)
+                                {
+                                    @foreach (var role in _roles)
+                                    {
+                                        <option value="@role.Name">@role.Name</option>
+                                    }
+                                }
+                            </select>
+                        }
+                    </div>
+                    @if (_isEditing)
+                    {
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" @bind="_updateIsEnabled" />
+                            <label class="form-check-label">啟用</label>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">取消</button>
+                    <button class="btn btn-primary" @onclick="SaveAccount">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showResetPassword)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">重設密碼 - @_selectedAccount?.UserName</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showResetPassword = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">新密碼</label>
+                        <input type="password" class="form-control" @bind="_newPassword" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => _showResetPassword = false">取消</button>
+                    <button class="btn btn-primary" @onclick="DoResetPassword">確認</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private IAccountService AccountService { get; set; } = default!;
+
+    private List<AccountDto>? _accounts;
+    private List<RoleDto>? _roles;
+    private bool _showForm;
+    private bool _isEditing;
+    private bool _showResetPassword;
+    private string? _formError;
+    private string? _editingId;
+    private string _newPassword = "";
+    private AccountDto? _selectedAccount;
+    private CreateAccountDto _createDto = new();
+    private UpdateAccountDto _updateDto = new();
+    private bool _updateIsEnabled = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _accounts = await AccountService.GetAllAccountsAsync();
+        _roles = await AccountService.GetAllRolesAsync();
+    }
+
+    private void ShowCreateForm()
+    {
+        _isEditing = false;
+        _createDto = new CreateAccountDto { IsEnabled = true };
+        _formError = null;
+        _showForm = true;
+    }
+
+    private void ShowEditForm(AccountDto account)
+    {
+        _isEditing = true;
+        _editingId = account.Id;
+        _updateDto = new UpdateAccountDto
+        {
+            UserName = account.UserName,
+            Email = account.Email,
+            RoleName = account.RoleName,
+            IsEnabled = account.IsEnabled
+        };
+        _updateIsEnabled = account.IsEnabled;
+        _formError = null;
+        _showForm = true;
+    }
+
+    private void ShowResetPassword(AccountDto account)
+    {
+        _selectedAccount = account;
+        _newPassword = "";
+        _showResetPassword = true;
+    }
+
+    private void CloseForm() => _showForm = false;
+
+    private async Task SaveAccount()
+    {
+        try
+        {
+            if (_isEditing)
+            {
+                _updateDto.IsEnabled = _updateIsEnabled;
+                await AccountService.UpdateAccountAsync(_editingId!, _updateDto);
+            }
+            else
+            {
+                await AccountService.CreateAccountAsync(_createDto);
+            }
+            _showForm = false;
+            _accounts = await AccountService.GetAllAccountsAsync();
+        }
+        catch (Exception ex)
+        {
+            _formError = ex.Message;
+        }
+    }
+
+    private async Task DeleteAccount(AccountDto account)
+    {
+        await AccountService.DeleteAccountAsync(account.Id);
+        _accounts = await AccountService.GetAllAccountsAsync();
+    }
+
+    private async Task DoResetPassword()
+    {
+        if (_selectedAccount != null && !string.IsNullOrEmpty(_newPassword))
+        {
+            await AccountService.ResetPasswordAsync(_selectedAccount.Id, _newPassword);
+            _showResetPassword = false;
+        }
+    }
+}

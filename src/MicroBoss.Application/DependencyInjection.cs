@@ -2,6 +2,8 @@ using System.Reflection;
 using FluentValidation;
 using Mapster;
 using MapsterMapper;
+using MicroBoss.Application.Interfaces;
+using MicroBoss.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MicroBoss.Application;
@@ -16,6 +18,7 @@ public static class DependencyInjection
         config.Scan(assembly);
         services.AddSingleton(config);
         services.AddScoped<IMapper, ServiceMapper>();
+        services.AddScoped<IAccountService, AccountService>();
         return services;
     }
 }
