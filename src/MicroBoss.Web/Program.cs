@@ -1,8 +1,10 @@
 using MicroBoss.Application;
 using MicroBoss.Infrastructure;
+using MicroBoss.Infrastructure.Data;
 using MicroBoss.Infrastructure.Identity;
 using MicroBoss.Web.Components;
 using MicroBoss.Web.Middleware;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -27,6 +29,8 @@ try
 
     using (var scope = app.Services.CreateScope())
     {
+        var db = scope.ServiceProvider.GetRequiredService<MicroBossDbContext>();
+        await db.Database.MigrateAsync();
         await IdentitySetup.SeedRolesAsync(scope.ServiceProvider);
         await IdentitySetup.SeedDefaultAdminAsync(scope.ServiceProvider);
     }
