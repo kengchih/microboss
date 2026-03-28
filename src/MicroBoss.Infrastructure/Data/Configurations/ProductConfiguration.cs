@@ -15,6 +15,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.ProductNo).HasMaxLength(100);
         builder.Property(p => p.ProductName).HasMaxLength(200);
         builder.Property(p => p.ProductNameExt).HasMaxLength(200);
+        builder.Property(p => p.ProductSpecExt).HasColumnName("ProductSprcExt");
         builder.Property(p => p.Weight).HasColumnType("decimal(18,2)");
         builder.Property(p => p.ProductClass)
                .HasConversion(v => v.HasValue ? (int?)v.Value : null, v => v.HasValue ? (ProductClass?)v.Value : null);
